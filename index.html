@@ -23,7 +23,7 @@
   html,body{height:100%;overflow:hidden;background:#01010a;font-family:var(--mono);
     overscroll-behavior:none;touch-action:manipulation;}
   #stage{position:fixed;inset:0;cursor:crosshair;touch-action:none;}
-  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}  /* stage only — must NOT catch #bcanvas */
   #vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 240px 40px rgba(0,0,0,.75);z-index:2;}
 
   #hint{position:fixed;left:0;right:0;top:12%;z-index:3;pointer-events:none;text-align:center;
@@ -159,8 +159,9 @@
     .tlbar .btn{padding:8px 9px;}
     .tlbar .bnote:last-of-type{display:none;}
     .tlbar .lbl{display:none;}
-    #builder{width:94vw;min-width:0;max-height:calc(100vh - 40px);}
-    #bcanvas{height:min(300px,34vh);}
+    #builder{width:94vw;min-width:0;max-height:100%;}
+    #builderOverlay{padding:10px 8px calc(var(--dockH,0px) + 10px);}
+    #bcanvas{height:clamp(130px, calc((100vh - var(--dockH,0px)) * 0.38), 280px);}
     .btoolbar{gap:5px;}
     #tlMenu,#tlEdit{max-width:94vw;}
     .mi{padding:12px 10px;font-size:.72rem;}
@@ -168,14 +169,15 @@
   }
   @media (max-width:820px) and (orientation:landscape){
     #console{max-height:60vh;}
-    #bcanvas{height:min(220px,44vh);}
+    #bcanvas{height:clamp(110px, calc((100vh - var(--dockH,0px)) * 0.52), 220px);}
   }
   .spacer{flex:1 1 auto;}
 
   #builderOverlay{position:fixed;inset:0;z-index:20;background:rgba(2,2,8,.72);
-    display:none;align-items:center;justify-content:center;}
+    display:none;align-items:center;justify-content:center;
+    padding:20px 16px calc(var(--dockH,0px) + 20px);}   /* keep the dialog clear of the firing console */
   #builderOverlay.on{display:flex;}
-  #builder{width:50vw;min-width:300px;max-width:640px;height:auto;max-height:calc(100vh - 72px);
+  #builder{position:relative;width:50vw;min-width:300px;max-width:640px;height:auto;max-height:100%;
     display:flex;flex-direction:column;overflow:hidden;color:var(--phosphor);
     background:linear-gradient(180deg,#211c18,#161311);border:1px solid var(--edge);border-radius:12px;
     box-shadow:0 20px 60px rgba(0,0,0,.6);}
@@ -183,8 +185,10 @@
     display:flex;align-items:center;justify-content:space-between;gap:8px;flex:0 0 auto;}
   .bbody{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 14px;overflow-y:auto;flex:1 1 auto;min-height:0;}
   .btoolbar{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;width:100%;}
-  #bcanvas{background:transparent;border:0;touch-action:none;cursor:crosshair;
-    width:100%;height:min(300px,38vh);flex:0 0 auto;display:block;}
+  #bcanvas{position:relative;inset:auto;background:transparent;border:0;touch-action:none;cursor:crosshair;
+    width:100%;flex:0 0 auto;display:block;
+    /* scale the disc to the space actually left over above the console */
+    height:clamp(150px, calc((100vh - var(--dockH,0px)) * 0.40), 300px);}
   #cutList{display:flex;flex-direction:column;gap:5px;align-items:center;width:100%;}
   #dBi.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 10px rgba(70,140,255,.3);}
   .bcontrols{flex:1 1 200px;display:flex;flex-direction:column;gap:9px;min-width:190px;}
@@ -1258,7 +1262,7 @@ function loadBuilderFrom(cs){                                     // populate th
       regions:{...s.regions},deform:{...s.deform},rtp:{...(s.rtp||{radius:1,trails:0.3,persist:1.05})}})),active:0};
   } else builder=defaultBuilder();
 }
-function openBuilderUI(){ builderOverlay.classList.add('on'); fitBuilderCanvas();
+function openBuilderUI(){ syncDockHeight(); builderOverlay.classList.add('on'); fitBuilderCanvas();
   builder.shells.forEach((s,i)=>genPreviewFrags(s.base,i)); syncBuilderControls(); drawBuilder(); }
 openBuilder.onclick=()=>{ builderTarget=null;                    // opened from the console
   if(customShell) loadBuilderFrom(customShell); openBuilderUI(); };
@@ -1279,6 +1283,17 @@ document.getElementById('bUse').onclick=()=>{
   openBuilder.classList.add('on'); syncSliders(); builderOverlay.classList.remove('on'); };
 builderOverlay.addEventListener('pointerdown',e=>{ if(e.target===builderOverlay) builderOverlay.classList.remove('on'); });
 window.addEventListener('resize',()=>{ if(builderOverlay.classList.contains('on')){ fitBuilderCanvas(); drawBuilder(); } });
+
+/* The console/timeline dock is a fixed-height band at the bottom; publish its height so the
+   builder overlay can reserve that space instead of centering the dialog on top of it. */
+function syncDockHeight(){ const el=document.getElementById('dock'); if(!el) return;
+  const r=el.getBoundingClientRect();
+  const h=Math.max(0, Math.min(window.innerHeight, window.innerHeight - r.top));  // visible band, honors drag-to-hide
+  document.documentElement.style.setProperty('--dockH', Math.round(h)+'px');
+  if(builderOverlay.classList.contains('on')){ fitBuilderCanvas(); drawBuilder(); } }
+if(window.ResizeObserver){ const de=document.getElementById('dock'); if(de) new ResizeObserver(syncDockHeight).observe(de); }
+window.addEventListener('resize',syncDockHeight);
+syncDockHeight();
 
 /* ---------------- rapid fire ---------------- */
 const RAPID_SHELLS=['peony','chrys','star','heart','willow','palm','ring'];
