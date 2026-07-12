@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#161311">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fireworks">
+<meta name="description" content="Design and perform a fireworks show in your browser.">
 <title>Fireworks Celebration Kit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,8 +20,9 @@
     --mono:"Space Mono",ui-monospace,"Courier New",monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;overflow:hidden;background:#01010a;font-family:var(--mono);}
-  #stage{position:fixed;inset:0;cursor:crosshair;}
+  html,body{height:100%;overflow:hidden;background:#01010a;font-family:var(--mono);
+    overscroll-behavior:none;touch-action:manipulation;}
+  #stage{position:fixed;inset:0;cursor:crosshair;touch-action:none;}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
   #vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 240px 40px rgba(0,0,0,.75);z-index:2;}
 
@@ -79,7 +86,8 @@
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #dock{position:fixed;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;}
-  #console{position:static;left:auto;right:auto;bottom:auto;z-index:auto;}
+  #console{position:static;left:auto;right:auto;bottom:auto;z-index:auto;
+    flex-direction:column;align-items:stretch;}
 
   #tlPanel{background:linear-gradient(180deg,#1b1714,#141110);border-top:1px solid var(--edge);
     box-shadow:0 -10px 30px rgba(0,0,0,.4);}
@@ -119,6 +127,49 @@
     text-shadow:0 0 50px rgba(255,150,60,.65);}
   #cdSkip{margin-top:18px;font-size:.66rem;letter-spacing:.24em;color:var(--amber-dim);text-transform:uppercase;}
 
+  .qbar{display:flex;align-items:center;gap:8px;width:100%;}
+  .tabbar{display:none;gap:4px;width:100%;margin-top:8px;}
+  .tab{flex:1;font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--amber-dim);background:#0f0c0a;border:1px solid var(--edge);border-radius:6px;
+    padding:9px 4px;cursor:pointer;}
+  .tab.on{color:var(--amber);border-color:var(--amber);background:linear-gradient(180deg,#3a2410,#241608);}
+  .panels{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;width:100%;}
+  .tp{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;}
+  .tp:not(.on){display:none;}
+
+  @media (max-width:820px){
+    #console{gap:0;padding:8px 10px calc(8px + env(safe-area-inset-bottom));max-height:52vh;}
+    .tabbar{display:flex;}
+    .panels{margin-top:8px;}
+    .tp{width:100%;gap:8px 10px;}
+    .tp .group{width:100%;flex-wrap:wrap;}
+    .lbl{display:inline;font-size:.5rem;}
+    .div{display:none;}
+    .btn,.sel{padding:10px 12px;font-size:.68rem;}          /* finger-sized targets */
+    .sel{flex:1 1 120px;max-width:none;}
+    #msgInput{flex:1 1 100%;max-width:none;padding:10px 12px;font-size:.8rem;}
+    .sw{width:26px;height:26px;}
+    .sld{flex:1 1 30%;}
+    input[type=range]{width:100%;height:22px;}
+    input[type=range]::-webkit-slider-thumb{width:18px;height:18px;}
+    input[type=range]::-moz-range-thumb{width:18px;height:18px;}
+    .ctitle{display:none;}
+    /* timeline bar: let it wrap, hide the desktop-only hint */
+    .tlbar{gap:5px;padding:6px 8px;}
+    .tlbar .btn{padding:8px 9px;}
+    .tlbar .bnote:last-of-type{display:none;}
+    .tlbar .lbl{display:none;}
+    #builder{width:94vw;min-width:0;max-height:calc(100vh - 40px);}
+    #bcanvas{height:min(300px,34vh);}
+    .btoolbar{gap:5px;}
+    #tlMenu,#tlEdit{max-width:94vw;}
+    .mi{padding:12px 10px;font-size:.72rem;}
+    .erow input[type=range]{width:100%;flex:1;}
+  }
+  @media (max-width:820px) and (orientation:landscape){
+    #console{max-height:60vh;}
+    #bcanvas{height:min(220px,44vh);}
+  }
   .spacer{flex:1 1 auto;}
 
   #builderOverlay{position:fixed;inset:0;z-index:20;background:rgba(2,2,8,.72);
@@ -155,7 +206,7 @@
     padding:6px 9px;cursor:pointer;line-height:1;}
   #minBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
   #console.min{max-height:none;overflow:visible;padding:7px 14px calc(7px + env(safe-area-inset-bottom));}
-  #console.min > *:not(#minBtn):not(.ctitle){display:none;}
+  #console.min .tabbar,#console.min .panels{display:none;}
   @media (max-width:820px){#console{gap:8px 10px;padding-top:15px;}.lbl{display:none;}.div{display:none;}
     #msgInput{width:100%;max-width:100%;order:9;}.spacer{display:none;}}
 </style>
@@ -229,59 +280,80 @@
   </div>
 
   <div id="console">
-    <button id="minBtn" title="Minimize console">▾</button>
-    <span class="ctitle">◈ CONSOLE</span>
-    <div class="group">
-      <span class="lbl">Scene</span>
-      <select class="sel" id="sceneSel">
-        <option value="city">City</option><option value="bridge">Bridge</option>
-        <option value="capitol">Capitol</option><option value="mountain">Mountain</option>
-        <option value="town">Town</option>
-      </select>
-    </div>
-    <div class="group">
-      <span class="lbl">Shell</span>
-      <select class="sel" id="shellSel">
-        <option value="peony">Peony</option><option value="chrys">Chrys</option>
-        <option value="star">Star</option><option value="heart">Heart</option>
-        <option value="willow">Willow</option><option value="palm">Palm</option>
-        <option value="ring">Ring</option>
-        <option value="custom" id="customOpt" hidden>Custom ✦</option>
-      </select>
-      <button class="btn" id="openBuilder">🔨</button>
-    </div>
-    <div class="group">
-      <span class="lbl">Shape</span>
-      <label class="sld" title="Radius"><span>R</span><input id="sRadius" type="range" min="0.5" max="1.8" step="0.05"></label>
-      <label class="sld" title="Trails"><span>T</span><input id="sTrails" type="range" min="0" max="1" step="0.05"></label>
-      <label class="sld" title="Persistence"><span>P</span><input id="sPersist" type="range" min="0.6" max="2" step="0.05"></label>
-    </div>
-    <div class="group">
-      <span class="lbl">Ground</span>
-      <select class="sel" id="groundSel">
-        <option value="fountain">Fountain</option><option value="candle">Candle</option>
-        <option value="wheel">Wheel</option><option value="serpent">Serpent</option>
-        <option value="salute">Salute</option>
-      </select>
-      <button class="btn" id="corners">Corners</button>
-    </div>
-    <div class="group">
-      <span class="lbl">Color</span>
+    <div class="qbar">
+      <button id="minBtn" title="Minimize console">▾</button>
+      <span class="ctitle">◈ CONSOLE</span>
       <div class="swatches" id="colors"></div>
+      <span class="spacer"></span>
+      <button class="btn" id="rapid">⚡</button>
+      <button class="btn" id="finale">◈</button>
+      <button class="btn" id="mute">♪</button>
     </div>
-    <div class="div"></div>
-    <div class="group">
-      <span class="lbl">Music</span>
-      <button class="btn" id="playBtn">▶</button>
-      <label class="btn filebtn" id="audLabel">Audio<input id="audioFile" type="file" accept="audio/*"></label>
-      <label class="btn filebtn" id="midLabel">MIDI<input id="midiFile" type="file" accept=".mid,.midi,audio/midi"></label>
-      <button class="btn" id="stopBtn">■</button>
+    <div class="tabbar" id="tabbar">
+      <button class="tab on" data-tab="shell">Shell</button>
+      <button class="tab" data-tab="ground">Ground</button>
+      <button class="tab" data-tab="scene">Scene</button>
+      <button class="tab" data-tab="music">Music</button>
+      <button class="tab" data-tab="text">Text</button>
     </div>
-    <div class="spacer"></div>
-    <input id="msgInput" type="text" maxlength="60" placeholder="LED sign message…" autocomplete="off">
-    <button class="btn" id="rapid">⚡ Rapid</button>
-    <button class="btn" id="finale">◈ Finale</button>
-    <button class="btn" id="mute">♪ Sound</button>
+    <div class="panels">
+      <div class="tp on" data-tab="shell">
+        <div class="group">
+          <span class="lbl">Shell</span>
+          <select class="sel" id="shellSel">
+            <option value="peony">Peony</option><option value="chrys">Chrys</option>
+            <option value="star">Star</option><option value="heart">Heart</option>
+            <option value="willow">Willow</option><option value="palm">Palm</option>
+            <option value="ring">Ring</option>
+            <option value="custom" id="customOpt" hidden>Custom ✦</option>
+          </select>
+          <button class="btn" id="openBuilder">🔨</button>
+        </div>
+        <div class="group">
+          <span class="lbl">Shape</span>
+          <label class="sld" title="Radius"><span>R</span><input id="sRadius" type="range" min="0.5" max="1.8" step="0.05"></label>
+          <label class="sld" title="Trails"><span>T</span><input id="sTrails" type="range" min="0" max="1" step="0.05"></label>
+          <label class="sld" title="Persistence"><span>P</span><input id="sPersist" type="range" min="0.6" max="2" step="0.05"></label>
+        </div>
+      </div>
+      <div class="tp on" data-tab="ground">
+        <div class="group">
+          <span class="lbl">Ground</span>
+          <select class="sel" id="groundSel">
+            <option value="fountain">Fountain</option><option value="candle">Candle</option>
+            <option value="wheel">Wheel</option><option value="serpent">Serpent</option>
+            <option value="salute">Salute</option>
+          </select>
+          <button class="btn" id="corners">Corners</button>
+        </div>
+      </div>
+      <div class="tp on" data-tab="scene">
+        <div class="group">
+          <span class="lbl">Scene</span>
+          <select class="sel" id="sceneSel">
+            <option value="city">City</option><option value="bridge">Bridge</option>
+            <option value="capitol">Capitol</option><option value="mountain">Mountain</option>
+            <option value="town">Town</option>
+          </select>
+        </div>
+      </div>
+      <div class="tp on" data-tab="music">
+        <div class="group">
+          <span class="lbl">Music</span>
+          <button class="btn" id="playBtn">▶</button>
+          <label class="btn filebtn" id="audLabel">Audio<input id="audioFile" type="file" accept="audio/*"></label>
+          <label class="btn filebtn" id="midLabel">MIDI<input id="midiFile" type="file" accept=".mid,.midi,audio/midi"></label>
+          <button class="btn" id="stopBtn">■</button>
+          <button class="btn" id="installBtn" hidden>⤓ Install</button>
+        </div>
+      </div>
+      <div class="tp on" data-tab="text">
+        <div class="group">
+          <span class="lbl">Sign</span>
+          <input id="msgInput" type="text" maxlength="60" placeholder="LED sign message…" autocomplete="off">
+        </div>
+      </div>
+    </div>
   </div>
   </div>
 
@@ -1246,7 +1318,8 @@ window.addEventListener('pointermove',e=>{ if(dockDragY==null) return;
   const maxHide=Math.max(0,dockEl.offsetHeight-46);                 // always leave a grab strip on screen
   dockShift=Math.max(0,Math.min(maxHide,dockDragStart+(e.clientY-dockDragY)));
   dockEl.style.transform=`translateY(${dockShift}px)`; });
-window.addEventListener('pointerup',e=>{ if(dockDragY!=null && e.button===2) dockDragY=null; });
+window.addEventListener('pointerup',()=>{ dockDragY=null; });
+window.addEventListener('pointercancel',()=>{ dockDragY=null; });
 
 /* ============================================================
    SEQUENCER / TIMELINE  (dotplot: x = time, events stack on y)
@@ -1606,6 +1679,85 @@ function autoSongEvent(){
 }
 window.addEventListener('resize',()=>{ if(!tlPanel.classList.contains('collapsed')){ tlResize(); tlDraw(); } });
 relayout();
+
+/* ---------------- mobile UI ---------------- */
+const isTouch = matchMedia('(hover: none)').matches || 'ontouchstart' in window;
+const isNarrow = () => window.innerWidth<=820;
+const tabbar=document.getElementById('tabbar');
+function setTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
+  document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('on',!isNarrow()||p.dataset.tab===name));
+}
+tabbar.addEventListener('click',e=>{ const t=e.target.closest('.tab'); if(t) setTab(t.dataset.tab); });
+function applyLayout(){
+  if(isNarrow()){ const cur=document.querySelector('.tab.on'); setTab(cur?cur.dataset.tab:'shell'); }
+  else document.querySelectorAll('.tp').forEach(p=>p.classList.add('on'));   // desktop: show every panel inline
+}
+window.addEventListener('resize',applyLayout);
+applyLayout();
+if(isNarrow()) tlPanel.classList.add('collapsed');       // start with the sky, not the tools
+
+/* drag the dock down to reclaim the sky (touch: drag the quick bar; desktop: right-drag anywhere) */
+const qbar=document.querySelector('.qbar');
+qbar.style.touchAction='none';
+qbar.addEventListener('pointerdown',e=>{
+  if(e.target.closest('button')||e.target.closest('.swatches')) return;      // don't hijack controls
+  dockDragY=e.clientY; dockDragStart=dockShift; qbar.setPointerCapture(e.pointerId);
+});
+qbar.addEventListener('pointerup',()=>{ dockDragY=null; });
+
+/* pinch to zoom the timeline on touch */
+let pinch=null;
+tlScroll.addEventListener('touchstart',e=>{ if(e.touches.length===2){
+  const [a,b]=e.touches, d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  pinch={d,zoom:timeline.zoom}; } },{passive:true});
+tlScroll.addEventListener('touchmove',e=>{ if(pinch&&e.touches.length===2){ e.preventDefault();
+  const [a,b]=e.touches, d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+  timeline.zoom=Math.max(3,Math.min(600,pinch.zoom*(d/pinch.d)));
+  tlResize(); tlCanvas.style.left=tlScroll.scrollLeft+'px'; tlDraw(); } },{passive:false});
+tlScroll.addEventListener('touchend',()=>{ pinch=null; });
+
+/* ---------------- PWA ---------------- */
+const ICON=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#0a0c18"/><g stroke-linecap="round"><g stroke="#ffb347" stroke-width="14">${
+  Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return `<line x1="256" y1="256" x2="${256+Math.cos(a)*150}" y2="${256+Math.sin(a)*150}"/>`;}).join('')
+}</g><g fill="#ff5a2c">${
+  Array.from({length:12},(_,i)=>{const a=i*Math.PI/6+Math.PI/12;return `<circle cx="${256+Math.cos(a)*120}" cy="${256+Math.sin(a)*120}" r="13"/>`;}).join('')
+}</g><circle cx="256" cy="256" r="30" fill="#ffd68a"/></svg>`;
+const iconURL='data:image/svg+xml,'+encodeURIComponent(ICON);
+const MANIFEST={name:'Fireworks Celebration Kit',short_name:'Fireworks',start_url:'.',scope:'.',
+  display:'fullscreen',orientation:'any',background_color:'#01010a',theme_color:'#161311',
+  description:'Design and perform a fireworks show in your browser.',
+  icons:[{src:iconURL,sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]};
+try{
+  const mlink=document.createElement('link'); mlink.rel='manifest';
+  mlink.href=URL.createObjectURL(new Blob([JSON.stringify(MANIFEST)],{type:'application/manifest+json'}));
+  document.head.appendChild(mlink);
+  const ilink=document.createElement('link'); ilink.rel='apple-touch-icon'; ilink.href=iconURL; document.head.appendChild(ilink);
+}catch(e){ console.warn('manifest link failed',e); }
+
+/* offline cache. Needs same-origin hosting (https or localhost) — no-ops in a sandboxed preview. */
+if('serviceWorker' in navigator && location.protocol!=='blob:'){
+  const SW=`const C='fwk-v1';
+self.addEventListener('install',e=>{self.skipWaiting();
+  e.waitUntil(caches.open(C).then(c=>c.addAll(['./','./index.html']).catch(()=>{})));});
+self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim());});
+self.addEventListener('fetch',e=>{ if(e.request.method!=='GET') return;
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+    const cp=res.clone(); caches.open(C).then(c=>c.put(e.request,cp).catch(()=>{})); return res;
+  }).catch(()=>caches.match('./'))));});`;
+  try{
+    const swURL=URL.createObjectURL(new Blob([SW],{type:'text/javascript'}));
+    navigator.serviceWorker.register(swURL,{scope:'./'})
+      .catch(()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
+  }catch(e){ /* sandboxed: offline mode simply unavailable */ }
+}
+
+let deferredPrompt=null;
+const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; installBtn.hidden=false; });
+installBtn.onclick=async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt();
+  await deferredPrompt.userChoice; deferredPrompt=null; installBtn.hidden=true; };
+window.addEventListener('appinstalled',()=>{ installBtn.hidden=true; deferredPrompt=null; });
 
 window.addEventListener('resize',resize); resize(); requestAnimationFrame(frame);
 setTimeout(()=>{ const s=curShell,c=curColor; curColor='gold'; launch(W*0.5,horizonY*0.32); curShell=s; curColor=c; },700);
