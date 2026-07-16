@@ -18,4 +18,19 @@ The much of the display is self-explanatory, and if you don't understand what so
 
 # The Timeline (designing shows)
 
-(to be continued)
+The timeline lets you record and play back shows, especially with musical accompaniment. Loaded music will automatically appear at the top of the timeline, shaded by the amount of energy in the song.
+
+A recorded show consists of a series of events. Events can represent a launched shell, a ground effect, or an LED message. Events are shown as rectangles on the timeline, and the left/right sides of the rectangle can be dragged. A couple of notes about different kinds of events
+
+1. Lengthy LED messages will scroll at least once, so the length of its rectangle will determine scroll speed.
+2. If the event is a shell, the right side of the rectangle marks the shell's detonation. A shell's launch velocity is calculated so that it detonates at the right altitude and time. 
+
+Events are added at the red play head's position by tapping the "+ Event" button. The red play head can me moved by clicking/tapping on the ruler, and pinching/scolling on the ruler allows you to zoom.
+
+The
+
+
+
+
+
+
