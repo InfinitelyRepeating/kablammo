@@ -773,7 +773,7 @@ function launch(tx,ty,o){
   rockets.push(r); sndLaunch(); hideHint();
   if(recording && !o.noRec){
     const ev={id:nextId(),kind:'shell',t0:recNow()+recOffset,t1:null,shell,color:colorName,
-      params:{...params},custom:copyCustom(custom),x:unShowX(tx),y:unShowY(ty)};
+      params:{...params},custom:copyCustom(custom),x:unShowX(tx),y:unShowY(ty),_rec:true,_fired:true};
     r.recEv=ev; timeline.events.push(ev);
   }
   return r;
@@ -867,7 +867,7 @@ function groundShot(type,x,o){
         size:2.4,type:'glow',c:COLORS.silver,drag:0.92,g:0.06}); } flash(x,y,64); sndSalute(); }
   if(recording && !o.noRec){
     timeline.events.push({id:nextId(),kind:'ground',t0:recNow()+recOffset,t1:recNow()+recOffset+durSec,
-      ground:type,color:colorName,rtp:{...rtp},x:unShowX(x)});
+      ground:type,color:colorName,rtp:{...rtp},x:unShowX(x),_rec:true,_fired:true});
   }
   hideHint();
   return made;
@@ -1987,7 +1987,7 @@ function tlEndEvent(e){
 function tlStart(){
   if(!timeline.events.length){ tlOpen(); return; }
   tlStop(); ensureAudio();
-  timeline.events.forEach(e=>{ e._fired=false; e._ended=false; e._em=null; });
+  timeline.events.forEach(e=>{ e._fired=false; e._ended=false; e._rec=false; e._em=null; });
   tlTime=0; tlPlaying=true; tlPlayBtn.classList.add('on'); tlPlayBtn.textContent='■'; tlPlayBtn.title='Stop show';
 }
 function tlStop(){
@@ -2010,6 +2010,13 @@ function tlTick(dt){
   if(recording){                                   // playhead tracks the live recording clock
     tlTime=recNow()+recOffset;
     if(tlTime>timeline.duration){ timeline.duration=Math.ceil((tlTime+10)/10)*10; tlResize(); }
+    // fire pre-existing events as the playhead passes them, so you can record ON TOP of a show.
+    // freshly-recorded events carry _rec and are skipped here — they already happened live.
+    for(const e of timeline.events){
+      if(e._rec) continue;
+      if(!e._fired && e.t0<=tlTime){ tlFire(e); e._fired=true; }
+      if(e._fired && !e._ended && e.t1!=null && tlTime>=e.t1){ tlEndEvent(e); e._ended=true; }
+    }
     tlClockEl.textContent=fmtClock(tlTime); tlFollowPlayhead(); tlDraw(); return;
   }
   if(!tlPlaying) return;
@@ -2033,6 +2040,8 @@ function updateRecLabel(){ const hasSong=!!songOnTimeline();
 function tlRecordStart(){
   const songEv=songOnTimeline();
   recOffset=songEv?songEv.t0:0;                       // recorded times land alongside the song on the timeline
+  // existing events replay as the playhead reaches them, so recording layers onto the current show
+  timeline.events.forEach(e=>{ e._fired=false; e._ended=false; e._rec=false; e._em=null; });
   const begin=()=>{ recording=true; recT0=performance.now();
     tlRecBtn.classList.add('on'); updateRecLabel(); tlOpen(); };
   if(songEv && audioPlayer.buf){
@@ -2045,7 +2054,8 @@ function tlRecordStart(){
 function tlRecordStop(){
   recording=false; tlRecBtn.classList.remove('on'); updateRecLabel();
   audioPlayer.stop(); updatePlayUI();
-  timeline.events.forEach(e=>{ if(e.kind==='shell' && e.t1==null) e.t1=e.t0+1.2; });   // never exploded
+  timeline.events.forEach(e=>{ if(e.kind==='shell' && e.t1==null) e.t1=e.t0+1.2;   // never exploded
+    e._rec=false; if(e._em&&e._em.life!==undefined) e._em.life=0; e._em=null; });   // clear transient state
   let maxT=0; timeline.events.forEach(e=>{ maxT=Math.max(maxT,e.t1||0); });
   if(maxT+5>timeline.duration) timeline.duration=Math.ceil((maxT+5)/10)*10;
   tlRefresh();
@@ -2229,7 +2239,7 @@ const tlLoadInput=document.getElementById('tlLoad');
 function closeFileMenu(){ tlFileMenu.classList.remove('on'); }
 function saveShow(){
   const data={version:1,duration:timeline.duration,snap:timeline.snap,zoom:timeline.zoom,
-    events:timeline.events.map(({_fired,_ended,_em,lane,...rest})=>rest)};
+    events:timeline.events.map(({_fired,_ended,_em,_rec,lane,...rest})=>rest)};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kablammo-show.json';
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
