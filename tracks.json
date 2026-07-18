@@ -1,0 +1,34 @@
+{
+  "tracks": [
+    {
+      "name": "Stars and Stripes Forever — U.S. Marine Band (2017)",
+      "display": "Stars and Stripes Forever",
+      "url": "tracks/stars_and_stripes_forever.mp3",
+      "source": "https://commons.wikimedia.org/wiki/File:Sousa's_%22The_Stars_and_Stripes_Forever%22_-_United_States_Marine_Band_(2017).ogg"
+    },
+    {
+      "name": "1812 Overture (Finale excerpt) — U.S. Army Band",
+      "display": "1812 Overture",
+      "url": "tracks/1812_overture.mp3",
+      "source": "https://archive.org/details/1812Overture"
+    },
+    {
+      "name": "The Blue Danube (Waltz/Finale except)— Orchestra Tsumugi",
+      "display": "The Blue Danube Waltz",
+      "url": "tracks/blue_danube.mp3",
+      "source": "https://www.classicals.de/strauss-2-blue-danube"
+    },
+    {
+      "name": "Ride of the Valkyries — cond. Philip Milman",
+      "display": "Ride of the Valkyries",
+      "url": "tracks/ride_of_the_valkyries.mp3",
+      "source": "https://www.classicals.de/wagner-valkyrie"
+    },
+    {
+      "name": "William Tell Overture (Finale excerpt) — Military Band",
+      "display": "William Tell Overture",
+      "url": "tracks/william_tell_overture.mp3",
+      "source": "https://commons.wikimedia.org/wiki/File:Gioachino_Rossini,_William_Tell_Overture_(military_band_version,_2000).ogg"
+    }
+  ]
+}
