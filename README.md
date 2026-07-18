@@ -13,7 +13,7 @@ The much of the display is self-explanatory, and if you don't understand what so
 * The radius/trails/persistence (RTP) sliders primarily effect aerial shells, not ground effects.
 * The hammer icon refers to the "Shell Builder." The Shell Builder lets you subdivide a particular shell pattern up to two times, color each section of shells differently, deform the distribution of fragments, and set a unique RTP value for that shell (which gets combined with the global RTP sliders). You can also combine up to two shell types. Shell builder only applies to aerial shells.
 * The LED sign shows at ground level, and scrolls for lengthy messages
-* You can load mp3, m4a and MIDI music. Doing so will automatically add the music to the timeline (see below), but you can also just play it and launch fireworks in real time.
+* You can load mp3, m4a and MIDI music. Doing so will automatically add the music to the timeline (see below), but you can also just play it and launch fireworks in real time. The page also ships with a selection of public domain/freely licensed music that's popular for fireworks shows.
 * The "rapid" button will launch a series of random shells that follow your cursor. The red "finale" button will launch a random blast of shells and ground effects.
 
 # The Timeline (designing shows)
@@ -35,6 +35,8 @@ A couple of notes about different kinds of events
 While events CAN be manually added one at a time, it's recommended that you use the record button to outline a show. While recording, any loaded music will play, and manually triggered shells and effects will be saved on the timeline as events. Any existing events will play normally, allowing you to add on to existing shows.
 
 You can use the record button to "outline" a show, and then manually revise the events for timing and variety.
+
+Recorded shows with musical accompaniment are given a "Sync Score" to rate how well the show goes with the music. Clicking the "sync" button will bring up your score, along with tips for improving it. Note that for shells, the sync score pays attention to when a shell detonates, not when it launches.
 
 Shows can be saved/loaded as JSON.
 
