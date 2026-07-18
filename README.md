@@ -20,15 +20,23 @@ The much of the display is self-explanatory, and if you don't understand what so
 
 The timeline lets you record and play back shows, especially with musical accompaniment. Loaded music will automatically appear at the top of the timeline, shaded by the amount of energy in the song.
 
-A recorded show consists of a series of events. Events can represent a launched shell, a ground effect, or an LED message. Events are shown as rectangles on the timeline, and the left/right sides of the rectangle can be dragged. A couple of notes about different kinds of events
+The red play head can be positioned by clicking on the ruler. Using the mouse wheel (or pinching) on the ruler will zoom in/out.
+
+A recorded show consists of a series of events. Events can represent a launched shell, a ground effect, or an LED message. Events are shown as rectangles on the timeline. Events can be added by clicking on the timeline with the mouse, or (on mobile) by positioning the red play head and tapping the "+ Event" button. Events will automatically snap to the nearest quarter second, unless snap-to is turned off.
+
+Existing events can be modified or removed by clicking on them, though the type of event (music, led, ground effect, etc) can't be changed. You can also drag the left and right sides of an event's rectangle to adjust start/stop/duration.
+
+A couple of notes about different kinds of events
 
 1. Lengthy LED messages will scroll at least once, so the length of its rectangle will determine scroll speed.
-2. If the event is a shell, the right side of the rectangle marks the shell's detonation. A shell's launch velocity is calculated so that it detonates at the right altitude and time. 
+2. If the event is a shell, the right side of the rectangle marks the shell's detonation. A shell's launch velocity is calculated so that it detonates at the right altitude and time.
+3. Aerial shell (and ground effects) have a position attribute to show where on the screen the shell (or effect) appears. The attribute is rescaled to the current resolution, so a show made on a mobile device will look different on a desktop.
 
-Events are added at the red play head's position by tapping the "+ Event" button. The red play head can me moved by clicking/tapping on the ruler, and pinching/scolling on the ruler allows you to zoom.
+While events CAN be manually added one at a time, it's recommended that you use the record button to outline a show. While recording, any loaded music will play, and manually triggered shells and effects will be saved on the timeline as events. Any existing events will play normally, allowing you to add on to existing shows.
 
-The
+You can use the record button to "outline" a show, and then manually revise the events for timing and variety.
 
+Shows can be saved/loaded as JSON.
 
 
 
