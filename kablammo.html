@@ -86,7 +86,11 @@
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #trackSel.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(255,150,60,.35);}
-  #trackInfoBtn{padding:4px 7px;line-height:1;}
+  #trackInfoBtn,#browseBtn{padding:4px 7px;line-height:1;}
+  #browseBtn{cursor:pointer;display:inline-block;}
+  #browseBtn.pulse{animation:bpulse .6s ease 3;}
+  @keyframes bpulse{0%,100%{border-color:var(--edge);box-shadow:none;}
+    50%{border-color:var(--amber);box-shadow:0 0 14px rgba(255,150,60,.6);}}
   #trackInfo{position:fixed;z-index:40;display:none;max-width:min(300px,88vw);
     background:linear-gradient(180deg,#211c18,#161311);border:1px solid var(--edge);border-radius:9px;
     box-shadow:0 14px 40px rgba(0,0,0,.6);padding:10px 12px;color:var(--phosphor);}
@@ -385,6 +389,7 @@
           <span class="lbl">Music</span>
           <button class="btn" id="playBtn">▶</button>
           <select class="sel narrow" id="trackSel"><option value="" disabled selected>Choose a file…</option><option value="__file__">Choose file…</option></select>
+          <label class="btn" id="browseBtn" for="audioFile" title="Load your own audio file">📂</label>
           <button class="btn" id="trackInfoBtn" title="Track info" hidden>ⓘ</button>
           <input id="audioFile" type="file" class="vfile">
           <span class="bnote" id="audStatus"></span>
@@ -1243,6 +1248,7 @@ function flashLabel(lbl,base,msg,ms){ lbl.firstChild.nodeValue=msg;
 /* ---- track info widget: shows the full name + source link for a loaded PRESET track.
    Hidden for user-picked files, which have no manifest metadata to show. ---- */
 const trackInfoBtn=document.getElementById('trackInfoBtn'), trackInfoEl=document.getElementById('trackInfo');
+const browseBtn=document.getElementById('browseBtn');
 let activeTrack=null;
 function setActiveTrack(t){ activeTrack=t||null;
   trackInfoBtn.hidden=!activeTrack;
@@ -1326,7 +1332,15 @@ async function loadTrackManifest(){
 loadTrackManifest();
 trackSel.onchange=async()=>{
   const v=trackSel.value;
-  if(v==='__file__'){ trackSel.value=''; audioFile.click(); return; }   // reset so it can be re-selected next time
+  if(v==='__file__'){
+    // Open the picker FIRST — mutating the select re-renders it and can eat the user
+    // activation Safari requires. If the browser blocks it anyway, 📂 is the reliable path.
+    try{ audioFile.click(); }catch(err){ console.warn('picker blocked:',err); }
+    setTimeout(()=>{ trackSel.value=''; },0);
+    browseBtn.classList.add('pulse');                    // point at the button that always works
+    setTimeout(()=>browseBtn.classList.remove('pulse'),1800);
+    return;
+  }
   const t=trackList[parseInt(v,10)]; if(!t) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();            // resume inside this gesture, before awaiting
   setAudioStatus('…'); setActiveTrack(t);          // metadata is known now — show ⓘ before the fetch
