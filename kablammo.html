@@ -83,6 +83,14 @@
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #trackSel.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(255,150,60,.35);}
+  #trackInfoBtn{padding:4px 7px;line-height:1;}
+  #trackInfo{position:fixed;z-index:40;display:none;max-width:min(300px,88vw);
+    background:linear-gradient(180deg,#211c18,#161311);border:1px solid var(--edge);border-radius:9px;
+    box-shadow:0 14px 40px rgba(0,0,0,.6);padding:10px 12px;color:var(--phosphor);}
+  #trackInfo.on{display:block;}
+  #trackInfo .tiName{font-size:.66rem;line-height:1.45;margin-bottom:7px;}
+  #trackInfo a{color:var(--amber);font-size:.6rem;letter-spacing:.04em;word-break:break-all;}
+  #trackInfo a:hover{text-decoration:underline;}
   #dock{position:fixed;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;
     -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
   #console{position:static;left:auto;right:auto;bottom:auto;z-index:auto;
@@ -374,6 +382,7 @@
           <span class="lbl">Music</span>
           <button class="btn" id="playBtn">▶</button>
           <select class="sel narrow" id="trackSel"><option value="" disabled selected>Choose a file…</option><option value="__file__">Choose file…</option></select>
+          <button class="btn" id="trackInfoBtn" title="Track info" hidden>ⓘ</button>
           <input id="audioFile" type="file" hidden>
           <span class="bnote" id="audStatus"></span>
           <label class="btn filebtn" id="midLabel">MIDI<input id="midiFile" type="file"></label>
@@ -397,6 +406,7 @@
   <div id="tlEdit"></div>
   <div id="posOverlay"><div id="posDlg"></div></div>
   <div id="scoreOverlay"><div id="scoreDlg"></div></div>
+  <div id="trackInfo"></div>
 
 <script>
 /* ============================================================
@@ -1227,14 +1237,49 @@ function setAudioStatus(sym,opts){ audStatus.textContent=sym; trackSel.classList
 function flashLabel(lbl,base,msg,ms){ lbl.firstChild.nodeValue=msg;
   setTimeout(()=>{ lbl.firstChild.nodeValue=base; }, ms||2200); }
 
+/* ---- track info widget: shows the full name + source link for a loaded PRESET track.
+   Hidden for user-picked files, which have no manifest metadata to show. ---- */
+const trackInfoBtn=document.getElementById('trackInfoBtn'), trackInfoEl=document.getElementById('trackInfo');
+let activeTrack=null;
+function setActiveTrack(t){ activeTrack=t||null;
+  trackInfoBtn.hidden=!activeTrack;
+  if(!activeTrack) trackInfoEl.classList.remove('on'); }
+function showTrackInfo(){
+  if(!activeTrack) return;
+  trackInfoEl.innerHTML='';
+  const n=document.createElement('div'); n.className='tiName'; n.textContent=activeTrack.name;
+  trackInfoEl.appendChild(n);
+  if(activeTrack.source){
+    const a=document.createElement('a'); a.href=activeTrack.source;
+    a.target='_blank'; a.rel='noopener noreferrer';        // open in a new tab, safely
+    a.textContent='Source ↗';
+    trackInfoEl.appendChild(a);
+  }
+  trackInfoEl.classList.add('on');
+  // anchor under the button, clamped to the viewport
+  const r=trackInfoBtn.getBoundingClientRect(), w=trackInfoEl.offsetWidth, h=trackInfoEl.offsetHeight;
+  let left=Math.min(Math.max(8,r.left), window.innerWidth-w-8);
+  let top=r.bottom+6; if(top+h>window.innerHeight-8) top=Math.max(8,r.top-h-6);   // flip above if needed
+  trackInfoEl.style.left=left+'px'; trackInfoEl.style.top=top+'px';
+}
+trackInfoBtn.onclick=e=>{ e.stopPropagation();
+  trackInfoEl.classList.contains('on') ? trackInfoEl.classList.remove('on') : showTrackInfo(); };
+document.addEventListener('pointerdown',e=>{                 // dismiss on any outside tap
+  if(!trackInfoEl.classList.contains('on')) return;
+  if(e.target===trackInfoBtn||trackInfoEl.contains(e.target)) return;
+  trackInfoEl.classList.remove('on');
+});
+
 async function loadMidiBuffer(buf){
   midiPlayer.load(buf); currentSource='midi';
+  setActiveTrack(null);                                    // MIDI has no manifest metadata
   analyzeMIDINotes(midiPlayer.notes, midiPlayer.dur);
   midLabel.firstChild.nodeValue='MIDI ✓'; midLabel.classList.add('on');
   playCurrent();
 }
 async function loadAudioBuffer(name,buf){
   const decoded=await audioPlayer.loadBuffer(buf);
+  setActiveTrack(null);                                    // preset path re-sets this after loading
   analyzeBuffer(decoded);
   songName=name;
   currentSource='audio';
@@ -1289,8 +1334,9 @@ trackSel.onchange=async()=>{
     const buf=await res.arrayBuffer();
     if(isMidiBuffer(buf)) await loadMidiBuffer(buf);      // in case a preset entry points at a .mid file
     else await loadAudioBuffer(t.name,buf);
+    setActiveTrack(t);                                   // metadata now available behind the ⓘ button
   }catch(err){ console.error('could not load preset track:',t.url,err);
-    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; }   // don't leave a failed track looking selected
+    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; setActiveTrack(null); }   // don't leave a failed track looking selected
 };
 
 audioFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
