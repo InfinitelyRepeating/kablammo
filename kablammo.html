@@ -86,11 +86,7 @@
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #trackSel.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(255,150,60,.35);}
-  #trackInfoBtn,#browseBtn{padding:4px 7px;line-height:1;}
-  #browseBtn{cursor:pointer;display:inline-block;}
-  #browseBtn.pulse{animation:bpulse .6s ease 3;}
-  @keyframes bpulse{0%,100%{border-color:var(--edge);box-shadow:none;}
-    50%{border-color:var(--amber);box-shadow:0 0 14px rgba(255,150,60,.6);}}
+  #trackInfoBtn{padding:4px 7px;line-height:1;}
   #trackInfo{position:fixed;z-index:40;display:none;max-width:min(300px,88vw);
     background:linear-gradient(180deg,#211c18,#161311);border:1px solid var(--edge);border-radius:9px;
     box-shadow:0 14px 40px rgba(0,0,0,.6);padding:10px 12px;color:var(--phosphor);}
@@ -388,10 +384,9 @@
         <div class="group">
           <span class="lbl">Music</span>
           <button class="btn" id="playBtn">▶</button>
-          <select class="sel narrow" id="trackSel"><option value="" disabled selected>Choose a file…</option><option value="__file__">Choose file…</option></select>
-          <label class="btn" id="browseBtn" for="audioFile" title="Load your own audio file">📂</label>
+          <select class="sel narrow" id="trackSel" title="Music included with Kablammo"><option value="" disabled selected>Included music…</option></select>
           <button class="btn" id="trackInfoBtn" title="Track info" hidden>ⓘ</button>
-          <input id="audioFile" type="file" class="vfile">
+          <label class="btn filebtn" id="audLabel" title="Load your own audio file">Load Track<input id="audioFile" type="file"></label>
           <span class="bnote" id="audStatus"></span>
           <label class="btn filebtn" id="midLabel">MIDI<input id="midiFile" type="file"></label>
           <button class="btn" id="stopBtn">■</button>
@@ -1210,15 +1205,17 @@ const playBtn=document.getElementById('playBtn');
 const audioFile=document.getElementById('audioFile'), midiFile=document.getElementById('midiFile');
 const trackSel=document.getElementById('trackSel'), audStatus=document.getElementById('audStatus');
 const stopBtn=document.getElementById('stopBtn'), midLabel=document.getElementById('midLabel');
+let audioUiEl=null;                                     // which control represents the loaded audio
 let currentSource='';                                   // '' | 'audio' | 'midi'
 function anyPlaying(){ return midiPlayer.playing||audioPlayer.playing; }
 function updatePlayUI(){ const p=anyPlaying(); playBtn.textContent=p?'⏸':'▶'; playBtn.classList.toggle('on',p); }
 function stopAllMusic(){ midiPlayer.stop(); audioPlayer.stop();
-  trackSel.classList.remove('on'); midLabel.classList.remove('on'); updatePlayUI(); }
+  trackSel.classList.remove('on'); audLabel.classList.remove('on'); midLabel.classList.remove('on');
+  updatePlayUI(); }
 function playCurrent(){ stopAllMusic();
   ensureAudio(); if(AC && AC.state==='suspended') AC.resume();
   try{
-    if(currentSource==='audio'){ if(!audioPlayer.buf) return; audioPlayer.play(); trackSel.classList.add('on'); }
+    if(currentSource==='audio'){ if(!audioPlayer.buf) return; audioPlayer.play(); if(audioUiEl) audioUiEl.classList.add('on'); }
     else if(currentSource==='midi'){ if(!midiPlayer.notes) return; midiPlayer.start(); midLabel.classList.add('on'); }
     else return;                                        // nothing loaded yet
   }catch(err){ console.error('playback failed:',err); }  // never let an error kill the button
@@ -1240,7 +1237,7 @@ stopBtn.onclick=stopAllMusic;
 function isMidiBuffer(buf){ const d=new DataView(buf);
   return d.byteLength>4 && d.getUint32(0)===0x4d546864; }   // "MThd"
 
-function setAudioStatus(sym,opts){ audStatus.textContent=sym; trackSel.classList.toggle('on',!!(opts&&opts.on));
+function setAudioStatus(sym,opts){ audStatus.textContent=sym;
   if(opts&&opts.clearMs) setTimeout(()=>{ if(audStatus.textContent===sym) audStatus.textContent=''; },opts.clearMs); }
 function flashLabel(lbl,base,msg,ms){ lbl.firstChild.nodeValue=msg;
   setTimeout(()=>{ lbl.firstChild.nodeValue=base; }, ms||2200); }
@@ -1248,7 +1245,7 @@ function flashLabel(lbl,base,msg,ms){ lbl.firstChild.nodeValue=msg;
 /* ---- track info widget: shows the full name + source link for a loaded PRESET track.
    Hidden for user-picked files, which have no manifest metadata to show. ---- */
 const trackInfoBtn=document.getElementById('trackInfoBtn'), trackInfoEl=document.getElementById('trackInfo');
-const browseBtn=document.getElementById('browseBtn');
+const audLabel=document.getElementById('audLabel');
 let activeTrack=null;
 function setActiveTrack(t){ activeTrack=t||null;
   trackInfoBtn.hidden=!activeTrack;
@@ -1291,7 +1288,8 @@ async function loadAudioBuffer(name,buf){
   songName=name;
   currentSource='audio';
   autoSongEvent(); updateRecLabel();                       // fit timeline to the song, 10s padding each side
-  setAudioStatus('✓',{on:true});
+  setAudioStatus('✓');
+  if(audioUiEl) audioUiEl.classList.add('on');             // show which control holds the track
 }
 
 /* ---- preset track dropdown, backed by tracks.json ----
@@ -1301,10 +1299,9 @@ let trackList=[];
 function populateTrackSel(note){
   trackSel.innerHTML='';
   const ph=document.createElement('option'); ph.value=''; ph.disabled=true; ph.selected=true;
-  ph.textContent = trackList.length ? 'Select a track…' : (note||'Choose a file…');
+  ph.textContent = trackList.length ? 'Included music…' : (note||'No included music');
   trackSel.appendChild(ph);
   trackList.forEach((t,i)=>{ const o=document.createElement('option'); o.value=String(i); o.textContent=t.display; trackSel.appendChild(o); });
-  const cf=document.createElement('option'); cf.value='__file__'; cf.textContent='Choose file…'; trackSel.appendChild(cf);
 }
 function normalizeTracks(data){
   const arr = Array.isArray(data) ? data : (data && Array.isArray(data.tracks) ? data.tracks : []);
@@ -1316,34 +1313,26 @@ function normalizeTracks(data){
 }
 async function loadTrackManifest(){
   // opened straight from disk? fetch can't work, so don't try — just offer the file picker.
-  if(location.protocol==='file:'){ trackList=[]; populateTrackSel('Choose a file…'); return; }
+  if(location.protocol==='file:'){ trackList=[]; populateTrackSel('No included music'); return; }
   try{
     const res=await fetch('tracks.json',{cache:'no-store'});
     if(!res.ok) throw new Error('manifest HTTP '+res.status);
     let data; try{ data=await res.json(); }
     catch(e){ throw new Error('manifest is not valid JSON'); }
     trackList=normalizeTracks(data);
-    populateTrackSel(trackList.length ? null : 'No presets listed — choose a file');
+    populateTrackSel(trackList.length ? null : 'No included music');
   }catch(e){
-    console.info('No preset tracks loaded ('+e.message+') — file picker still available.');
-    trackList=[]; populateTrackSel('Choose a file…');
+    console.info('No included music loaded ('+e.message+') — Load Track button still available.');
+    trackList=[]; populateTrackSel('No included music');
   }
 }
 loadTrackManifest();
 trackSel.onchange=async()=>{
   const v=trackSel.value;
-  if(v==='__file__'){
-    // Open the picker FIRST — mutating the select re-renders it and can eat the user
-    // activation Safari requires. If the browser blocks it anyway, 📂 is the reliable path.
-    try{ audioFile.click(); }catch(err){ console.warn('picker blocked:',err); }
-    setTimeout(()=>{ trackSel.value=''; },0);
-    browseBtn.classList.add('pulse');                    // point at the button that always works
-    setTimeout(()=>browseBtn.classList.remove('pulse'),1800);
-    return;
-  }
   const t=trackList[parseInt(v,10)]; if(!t) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();            // resume inside this gesture, before awaiting
   setAudioStatus('…'); setActiveTrack(t);          // metadata is known now — show ⓘ before the fetch
+  audioUiEl=trackSel; audLabel.classList.remove('on');   // this dropdown owns the track being loaded
   try{
     const res=await fetch(t.url); if(!res.ok) throw new Error('fetch failed: '+res.status);
     const buf=await res.arrayBuffer();
@@ -1351,12 +1340,13 @@ trackSel.onchange=async()=>{
     else await loadAudioBuffer(t.name,buf);
     setActiveTrack(t);                                   // metadata now available behind the ⓘ button
   }catch(err){ console.error('could not load preset track:',t.url,err);
-    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; }   // dropdown resets; ⓘ stays so you can reach the source
+    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; trackSel.classList.remove('on'); }   // ⓘ stays so you can reach the source
 };
 
 audioFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();   // resume inside the user gesture, before awaiting
   setAudioStatus('…'); setActiveTrack(null);                   // your own file has no manifest metadata
+  audioUiEl=audLabel; trackSel.value=''; trackSel.classList.remove('on');
   try{
     const buf=await f.arrayBuffer();
     if(isMidiBuffer(buf)){ await loadMidiBuffer(buf);          // you picked a MIDI — that's fine
