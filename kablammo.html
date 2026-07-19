@@ -80,6 +80,9 @@
     border-radius:5px;padding:7px 6px;outline:none;cursor:pointer;max-width:44vw;}
   #playBtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   .filebtn{position:relative;} .filebtn input{display:none;}
+  /* Safari blocks programmatic .click() on display:none file inputs, so these stay rendered
+     but visually gone. Do NOT swap this for [hidden] or display:none. */
+  .vfile{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;}
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #trackSel.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(255,150,60,.35);}
@@ -383,7 +386,7 @@
           <button class="btn" id="playBtn">▶</button>
           <select class="sel narrow" id="trackSel"><option value="" disabled selected>Choose a file…</option><option value="__file__">Choose file…</option></select>
           <button class="btn" id="trackInfoBtn" title="Track info" hidden>ⓘ</button>
-          <input id="audioFile" type="file" hidden>
+          <input id="audioFile" type="file" class="vfile">
           <span class="bnote" id="audStatus"></span>
           <label class="btn filebtn" id="midLabel">MIDI<input id="midiFile" type="file"></label>
           <button class="btn" id="stopBtn">■</button>
@@ -402,7 +405,7 @@
 
   <div id="tlMenu"></div>
   <div id="tlFileMenu"></div>
-  <input id="tlLoad" type="file" hidden>
+  <input id="tlLoad" type="file" class="vfile">
   <div id="tlEdit"></div>
   <div id="posOverlay"><div id="posDlg"></div></div>
   <div id="scoreOverlay"><div id="scoreDlg"></div></div>
@@ -1272,14 +1275,12 @@ document.addEventListener('pointerdown',e=>{                 // dismiss on any o
 
 async function loadMidiBuffer(buf){
   midiPlayer.load(buf); currentSource='midi';
-  setActiveTrack(null);                                    // MIDI has no manifest metadata
   analyzeMIDINotes(midiPlayer.notes, midiPlayer.dur);
   midLabel.firstChild.nodeValue='MIDI ✓'; midLabel.classList.add('on');
   playCurrent();
 }
 async function loadAudioBuffer(name,buf){
   const decoded=await audioPlayer.loadBuffer(buf);
-  setActiveTrack(null);                                    // preset path re-sets this after loading
   analyzeBuffer(decoded);
   songName=name;
   currentSource='audio';
@@ -1328,7 +1329,7 @@ trackSel.onchange=async()=>{
   if(v==='__file__'){ trackSel.value=''; audioFile.click(); return; }   // reset so it can be re-selected next time
   const t=trackList[parseInt(v,10)]; if(!t) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();            // resume inside this gesture, before awaiting
-  setAudioStatus('…');
+  setAudioStatus('…'); setActiveTrack(t);          // metadata is known now — show ⓘ before the fetch
   try{
     const res=await fetch(t.url); if(!res.ok) throw new Error('fetch failed: '+res.status);
     const buf=await res.arrayBuffer();
@@ -1336,12 +1337,12 @@ trackSel.onchange=async()=>{
     else await loadAudioBuffer(t.name,buf);
     setActiveTrack(t);                                   // metadata now available behind the ⓘ button
   }catch(err){ console.error('could not load preset track:',t.url,err);
-    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; setActiveTrack(null); }   // don't leave a failed track looking selected
+    setAudioStatus('✗',{clearMs:2600}); trackSel.value=''; }   // dropdown resets; ⓘ stays so you can reach the source
 };
 
 audioFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();   // resume inside the user gesture, before awaiting
-  setAudioStatus('…');
+  setAudioStatus('…'); setActiveTrack(null);                   // your own file has no manifest metadata
   try{
     const buf=await f.arrayBuffer();
     if(isMidiBuffer(buf)){ await loadMidiBuffer(buf);          // you picked a MIDI — that's fine
@@ -1352,7 +1353,7 @@ audioFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
 };
 midiFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
   ensureAudio(); if(AC&&AC.state==='suspended') AC.resume();
-  midLabel.firstChild.nodeValue='MIDI…';
+  midLabel.firstChild.nodeValue='MIDI…'; setActiveTrack(null);
   try{
     const buf=await f.arrayBuffer();
     if(isMidiBuffer(buf)) await loadMidiBuffer(buf);
