@@ -767,6 +767,21 @@ function drawLEDSign(t){
 
 /* ---------------- entities ---------------- */
 const parts=[], rockets=[], emitters=[], flashes=[]; const MAX_PARTS=3200;
+const EMBER_CAP=Math.round(MAX_PARTS*0.78);   // embers may never fill the last ~22% of the budget
+/* A burst must always spawn in FULL — a half-populated shell reads as a bug, not as a busy sky.
+   So make room by dropping decorative embers (oldest first), and only fall back to evicting
+   older primary sparks if that still isn't enough. Single pass, no repeated splices. */
+function makeRoom(n){
+  let need=parts.length+n-MAX_PARTS;
+  if(need<=0) return;
+  let w=0;
+  for(let i=0;i<parts.length;i++){
+    if(need>0 && parts[i].type==='ember'){ need--; continue; }   // drop this ember
+    parts[w++]=parts[i];
+  }
+  parts.length=w;
+  if(need>0) parts.splice(0,need);            // still short: retire the oldest sparks
+}
 
 /* ---------------- aerial launch + shells ---------------- */
 const GRAV=0.045;
@@ -833,7 +848,8 @@ function deformFactor(phi,def){ if(!def||def.mag<=0) return 1;
 /* one emitter for presets and custom layers alike */
 function emitShell(x,y,def,pal,R,T,PE,cfg,nOverride){
   const n=nOverride||def.n;
-  for(let i=0;i<n;i++){ if(parts.length>=MAX_PARTS) break;
+  makeRoom(n);                                   // claim the whole burst's worth up front
+  for(let i=0;i<n;i++){
     const f=def.emit(i,n); let vx=f.vx, vy=f.vy, c;
     if(cfg){                                             // custom shell: region color + deformation
       const phi=Math.atan2(vy,vx), rho=Math.min(1,Math.hypot(vx,vy)/SPEED_REF), k=deformFactor(phi,cfg.deform);
@@ -981,9 +997,13 @@ function drawParticles(dt,reflectOnly,now,wind){
     // hot core: a lightened version of the spark's OWN color (not white), faint, young sparks only
     if(!reflectOnly && lifeR>0.6){ const cr=(c[0]*5+255)/6|0, cg=(c[1]*5+255)/6|0, cb=(c[2]*5+255)/6|0;
       ctx.fillStyle=`rgba(${cr},${cg},${cb},${a*0.10})`; dot(p.x,p.y,p.size*0.28*lifeR); }
-    if(!reflectOnly&&p.type==='trail'&&parts.length<MAX_PARTS){
-      const tr=p.tr||0.5, prob=0.35+0.6*tr;
-      if(Math.random()<prob){ const el=18+34*tr;
+    /* Embers are supplementary sparkle — the canvas already leaves a motion trail via the
+       fade pass, so these don't need to carry the effect alone. Emission is kept proportionate
+       (prob x lifetime ~= 10 concurrent embers per spark at full trails) and stops short of the
+       cap so a new burst always has room. */
+    if(!reflectOnly&&p.type==='trail'&&parts.length<EMBER_CAP){
+      const tr=p.tr||0, prob=0.10+0.15*tr;
+      if(Math.random()<prob){ const el=18+22*tr;
         parts.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*0.35,vy:0.35,life:el,max:el,size:1.5,type:'ember',c:p.c,drag:0.93,g:0.03,tr:0}); }
     }
   }
