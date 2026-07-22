@@ -767,11 +767,22 @@ function drawLEDSign(t){
 
 /* ---------------- entities ---------------- */
 const parts=[], rockets=[], emitters=[], flashes=[]; const MAX_PARTS=3200;
-/* A burst must always spawn in FULL — a half-populated shell reads as a bug, not as a busy sky.
-   Trails are drawn as streaks rather than spawned particles, so the budget holds sparks only and
-   rarely fills; if it does, retire the oldest (nearest death) to seat the incoming burst. */
+/* Trail sparkle is decorative and must never crowd out actual shells. Reserve enough of the
+   budget for ~15 concurrent bursts of the largest shell (chrys, 110 sparks) and let ember
+   emission taper off as we approach that line. */
+const EMBER_SOFT=2450, EMBER_TAPER=500;
+/* A burst must always spawn in FULL — a half-populated shell reads as a bug, not a busy sky.
+   Decorative embers are surrendered first (they're sparkle, and every spark keeps its drawn
+   streak regardless); only if that isn't enough do we retire the oldest particles. */
 function makeRoom(n){
-  const need=parts.length+n-MAX_PARTS;
+  let need=parts.length+n-MAX_PARTS;
+  if(need<=0) return;
+  let w=0;
+  for(let i=0;i<parts.length;i++){
+    if(need>0 && parts[i].dec){ need--; continue; }      // give up sparkle before substance
+    parts[w++]=parts[i];
+  }
+  parts.length=w;
   if(need>0) parts.splice(0,need);
 }
 
@@ -849,9 +860,13 @@ function emitShell(x,y,def,pal,R,T,PE,cfg,nOverride){
       c=cfg.regions[regionOf(phi,rho,cfg.cuts)]||(pal&&pal[0])||COLORS.gold;
     } else c=palColor(pal,i);
     const life=f.life*PE;
-    // every spark carries its own streak (varied a little so the burst doesn't look uniform)
+    /* Every spark carries a drawn streak (cheap). A 15% subset ALSO emits real ember particles
+       for granular sparkle — enough to give the impression of a burning trail without the
+       ~10x particle cost of doing it for every fragment. */
     parts.push({x,y,vx:vx*R,vy:vy*R,life,max:life,size:f.size,type:'glow',
-      c,drag:f.drag,g:f.g,tr:T>0.02 ? T*(0.75+Math.random()*0.5) : 0}); }
+      c,drag:f.drag,g:f.g,
+      tr:T>0.02 ? T*(0.75+Math.random()*0.5) : 0,
+      em:(T>0.08 && Math.random()<0.15) ? T : 0}); }
 }
 
 function explode(x,y,pal,shell,params,cshell){
@@ -998,6 +1013,15 @@ function drawParticles(dt,reflectOnly,now,wind){
     // hot core: a lightened version of the spark's OWN color (not white), faint, young sparks only
     if(!reflectOnly && lifeR>0.6){ const cr=(c[0]*5+255)/6|0, cg=(c[1]*5+255)/6|0, cb=(c[2]*5+255)/6|0;
       ctx.fillStyle=`rgba(${cr},${cg},${cb},${a*0.10})`; dot(p.x,p.y,p.size*0.28*lifeR); }
+    /* The 15% emitter subset drops real embers for texture. Emission TAPERS as the budget fills
+       rather than stopping dead, and because every spark still has a drawn streak, running out
+       of ember headroom just thins the sparkle — trails never disappear the way they used to. */
+    if(!reflectOnly && p.em>0 && parts.length<EMBER_SOFT){
+      const room=Math.min(1,(EMBER_SOFT-parts.length)/EMBER_TAPER);
+      if(Math.random() < (0.10+0.18*p.em)*room){ const el=12+14*p.em;
+        parts.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*0.35,vy:0.35,life:el,max:el,
+          size:1.5,type:'ember',c:p.c,drag:0.93,g:0.03,tr:0,em:0,dec:1}); }
+    }
   }
 }
 function dot(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.fill(); }
