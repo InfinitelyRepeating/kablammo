@@ -26,14 +26,14 @@
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
   #vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 240px 40px rgba(0,0,0,.75);z-index:2;}
 
-  #wordmark{position:fixed;left:0;right:0;top:7%;z-index:3;pointer-events:none;text-align:center;
-    font-family:var(--mono);font-weight:700;font-size:clamp(1.6rem,7vw,3.4rem);letter-spacing:.34em;
+  #intro{position:fixed;left:0;right:0;top:7%;z-index:3;pointer-events:none;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:.5em;}
+  #wordmark{font-family:var(--mono);font-weight:700;font-size:clamp(1.6rem,7vw,3.4rem);letter-spacing:.34em;
     color:var(--amber);text-indent:.34em;
     text-shadow:0 0 28px rgba(255,150,60,.55),0 0 70px rgba(255,90,40,.30);
     transition:opacity .8s ease;}
   #wordmark.hide{opacity:0;}
-  #hint{position:fixed;left:0;right:0;top:12%;z-index:3;pointer-events:none;text-align:center;
-    color:rgba(255,214,138,.5);font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;transition:opacity .8s ease;}
+  #hint{color:rgba(255,214,138,.5);font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;transition:opacity .8s ease;}
   #hint.hide{opacity:0;}
 
   #console{position:fixed;left:0;right:0;bottom:0;z-index:4;
@@ -302,8 +302,10 @@
       </div>
     </div>
   </div>
-  <div id="wordmark">KABLAMMO</div>
-  <div id="hint">Tap high for aerial shells &nbsp;·&nbsp; low for ground effects</div>
+  <div id="intro">
+    <div id="wordmark">KABLAMMO</div>
+    <div id="hint">Tap high for aerial shells &nbsp;·&nbsp; low for ground effects</div>
+  </div>
 
   <div id="dock">
   <div id="tlPanel" class="collapsed">
@@ -2386,7 +2388,10 @@ const ICON=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect 
   Array.from({length:12},(_,i)=>{const a=i*Math.PI/6+Math.PI/12;return `<circle cx="${256+Math.cos(a)*120}" cy="${256+Math.sin(a)*120}" r="13"/>`;}).join('')
 }</g><circle cx="256" cy="256" r="30" fill="#ffd68a"/></svg>`;
 const iconURL='data:image/svg+xml,'+encodeURIComponent(ICON);
-const MANIFEST={name:'Kablammo',short_name:'Kablammo',start_url:'.',scope:'.',
+let pageDir='.';                                 // manifest is served via blob:, so relative paths there
+try{ pageDir=new URL('.',location.href).href; }   // ('.') resolve against the blob, not the page — fix that
+catch(e){ console.warn('could not resolve page URL for manifest, falling back to relative:',e); }
+const MANIFEST={name:'Kablammo',short_name:'Kablammo',start_url:pageDir,scope:pageDir,
   display:'fullscreen',orientation:'any',background_color:'#01010a',theme_color:'#161311',
   description:'Design and perform a fireworks show in your browser.',
   icons:[{src:iconURL,sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]};
@@ -2422,7 +2427,6 @@ installBtn.onclick=async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(
 window.addEventListener('appinstalled',()=>{ installBtn.hidden=true; deferredPrompt=null; });
 
 window.addEventListener('resize',resize); resize(); requestAnimationFrame(frame);
-setTimeout(()=>{ const s=curShell,c=curColor; curColor='gold'; launch(W*0.5,horizonY*0.32); curShell=s; curColor=c; },700);
 </script>
 </body>
 </html>
