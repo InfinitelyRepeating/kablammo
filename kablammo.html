@@ -767,20 +767,12 @@ function drawLEDSign(t){
 
 /* ---------------- entities ---------------- */
 const parts=[], rockets=[], emitters=[], flashes=[]; const MAX_PARTS=3200;
-const EMBER_CAP=Math.round(MAX_PARTS*0.78);   // embers may never fill the last ~22% of the budget
 /* A burst must always spawn in FULL — a half-populated shell reads as a bug, not as a busy sky.
-   So make room by dropping decorative embers (oldest first), and only fall back to evicting
-   older primary sparks if that still isn't enough. Single pass, no repeated splices. */
+   Trails are drawn as streaks rather than spawned particles, so the budget holds sparks only and
+   rarely fills; if it does, retire the oldest (nearest death) to seat the incoming burst. */
 function makeRoom(n){
-  let need=parts.length+n-MAX_PARTS;
-  if(need<=0) return;
-  let w=0;
-  for(let i=0;i<parts.length;i++){
-    if(need>0 && parts[i].type==='ember'){ need--; continue; }   // drop this ember
-    parts[w++]=parts[i];
-  }
-  parts.length=w;
-  if(need>0) parts.splice(0,need);            // still short: retire the oldest sparks
+  const need=parts.length+n-MAX_PARTS;
+  if(need>0) parts.splice(0,need);
 }
 
 /* ---------------- aerial launch + shells ---------------- */
@@ -856,9 +848,10 @@ function emitShell(x,y,def,pal,R,T,PE,cfg,nOverride){
       vx*=k; vy*=k;
       c=cfg.regions[regionOf(phi,rho,cfg.cuts)]||(pal&&pal[0])||COLORS.gold;
     } else c=palColor(pal,i);
-    const isTrail=T>0.10&&Math.random()<Math.min(0.98,0.25+T), life=f.life*PE;
-    parts.push({x,y,vx:vx*R,vy:vy*R,life,max:life,size:f.size,type:isTrail?'trail':'glow',
-      c,drag:f.drag,g:f.g,tr:isTrail?T:0}); }
+    const life=f.life*PE;
+    // every spark carries its own streak (varied a little so the burst doesn't look uniform)
+    parts.push({x,y,vx:vx*R,vy:vy*R,life,max:life,size:f.size,type:'glow',
+      c,drag:f.drag,g:f.g,tr:T>0.02 ? T*(0.75+Math.random()*0.5) : 0}); }
 }
 
 function explode(x,y,pal,shell,params,cshell){
@@ -992,20 +985,19 @@ function drawParticles(dt,reflectOnly,now,wind){
     if(!reflectOnly){ const tw=0.78+0.22*Math.sin(now*0.02+p.x*0.55+p.y*0.37);
       a*= (p.type==='glow') ? (0.9+0.1*tw) : tw; }
     const wob=reflectOnly?Math.sin(now*0.004+p.y*0.05)*2.2:0;
+    /* Trails are DRAWN, not spawned. A streak is extrapolated backwards along the particle's own
+       velocity, so a comet tail costs one stroke instead of ~10 ember particles. This is what
+       lets many trailed shells coexist: the budget holds sparks only. */
+    if(p.tr>0 && !reflectOnly && a>0.02){
+      const len=p.tr*5.5, px=p.x-p.vx*len, py=p.y-p.vy*len;
+      ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},${a*0.34})`;
+      ctx.lineWidth=p.size*(0.42+lifeR*0.34); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(p.x,p.y); ctx.stroke();
+    }
     ctx.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},${a})`; dot(p.x+wob,p.y,p.size*(0.6+lifeR*0.6));
-    // hot core: small, faint, and only while the spark is young — colour should dominate
     // hot core: a lightened version of the spark's OWN color (not white), faint, young sparks only
     if(!reflectOnly && lifeR>0.6){ const cr=(c[0]*5+255)/6|0, cg=(c[1]*5+255)/6|0, cb=(c[2]*5+255)/6|0;
       ctx.fillStyle=`rgba(${cr},${cg},${cb},${a*0.10})`; dot(p.x,p.y,p.size*0.28*lifeR); }
-    /* Embers are supplementary sparkle — the canvas already leaves a motion trail via the
-       fade pass, so these don't need to carry the effect alone. Emission is kept proportionate
-       (prob x lifetime ~= 10 concurrent embers per spark at full trails) and stops short of the
-       cap so a new burst always has room. */
-    if(!reflectOnly&&p.type==='trail'&&parts.length<EMBER_CAP){
-      const tr=p.tr||0, prob=0.10+0.15*tr;
-      if(Math.random()<prob){ const el=18+22*tr;
-        parts.push({x:p.x,y:p.y,vx:(Math.random()-0.5)*0.35,vy:0.35,life:el,max:el,size:1.5,type:'ember',c:p.c,drag:0.93,g:0.03,tr:0}); }
-    }
   }
 }
 function dot(x,y,r){ ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.fill(); }
