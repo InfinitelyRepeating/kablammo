@@ -2388,20 +2388,37 @@ const ICON=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect 
 }</g><g fill="#ff5a2c">${
   Array.from({length:12},(_,i)=>{const a=i*Math.PI/6+Math.PI/12;return `<circle cx="${256+Math.cos(a)*120}" cy="${256+Math.sin(a)*120}" r="13"/>`;}).join('')
 }</g><circle cx="256" cy="256" r="30" fill="#ffd68a"/></g></svg>`;
-const iconURL='data:image/svg+xml,'+encodeURIComponent(ICON);
+const inlineIconURL='data:image/svg+xml,'+encodeURIComponent(ICON);   // fallback only, see below
 let pageDir='.';                                 // manifest is served via blob:, so relative paths there
 try{ pageDir=new URL('.',location.href).href; }   // ('.') resolve against the blob, not the page — fix that
 catch(e){ console.warn('could not resolve page URL for manifest, falling back to relative:',e); }
-const MANIFEST={name:'Kablammo',short_name:'Kablammo',start_url:pageDir,scope:pageDir,
-  display:'fullscreen',orientation:'any',background_color:'#01010a',theme_color:'#161311',
-  description:'Design and perform a fireworks show in your browser.',
-  icons:[{src:iconURL,sizes:'any',type:'image/svg+xml',purpose:'any maskable'}]};
-try{
-  const mlink=document.createElement('link'); mlink.rel='manifest';
-  mlink.href=URL.createObjectURL(new Blob([JSON.stringify(MANIFEST)],{type:'application/manifest+json'}));
-  document.head.appendChild(mlink);
-  const ilink=document.createElement('link'); ilink.rel='apple-touch-icon'; ilink.href=iconURL; document.head.appendChild(ilink);
-}catch(e){ console.warn('manifest link failed',e); }
+/* Chrome's manifest icon fetcher is unreliable with a data: URI icon inside a blob:-served
+   manifest — it can fail with "Download error or resource isn't a valid image" even when the
+   SVG itself is fine. A real file, referenced by URL, avoids that path entirely. Falls back to
+   the inline icon only if favicon.svg hasn't been uploaded alongside this page. */
+let iconURL=inlineIconURL;
+fetch(pageDir+'favicon.svg',{method:'HEAD'}).then(r=>{
+  if(r.ok){ iconURL=pageDir+'favicon.svg'; refreshManifest(); }
+}).catch(()=>{});   // fine — stays on the inline fallback
+
+function refreshManifest(){
+  const MANIFEST={name:'Kablammo',short_name:'Kablammo',start_url:pageDir,scope:pageDir,
+    display:'fullscreen',orientation:'any',background_color:'#01010a',theme_color:'#161311',
+    description:'Design and perform a fireworks show in your browser.',
+    icons:[{src:iconURL,sizes:'512x512',type:'image/svg+xml',purpose:'any'},
+           {src:iconURL,sizes:'512x512',type:'image/svg+xml',purpose:'maskable'}]};
+  try{
+    const old=document.querySelector('link[rel="manifest"]');
+    if(old){ URL.revokeObjectURL(old.href); old.remove(); }
+    const mlink=document.createElement('link'); mlink.rel='manifest';
+    mlink.href=URL.createObjectURL(new Blob([JSON.stringify(MANIFEST)],{type:'application/manifest+json'}));
+    document.head.appendChild(mlink);
+    let ilink=document.querySelector('link[rel="apple-touch-icon"]');
+    if(!ilink){ ilink=document.createElement('link'); ilink.rel='apple-touch-icon'; document.head.appendChild(ilink); }
+    ilink.href=iconURL;
+  }catch(e){ console.warn('manifest link failed',e); }
+}
+refreshManifest();
 
 /* offline cache. Needs same-origin hosting (https or localhost) — no-ops in a sandboxed preview. */
 if('serviceWorker' in navigator && location.protocol!=='blob:'){
