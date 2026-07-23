@@ -563,13 +563,15 @@ const SCENES={
       if(!reflect){ for(const b of d.front) for(const wn of b.windows){
         bgx.globalAlpha=0.3+wn.lit*0.5; bgx.fillStyle=wn.lit>0.7?'#ffd27a':'#e8a94a'; bgx.fillRect(wn.x,wn.y,2.1,3); }
         bgx.globalAlpha=1; }
+      const shoreH=Math.max(2,horizonY*0.010);                                // waterfront embankment
+      bgx.fillStyle=reflect?'#0b0e24':'#333c58'; bgx.fillRect(0,horizonY-shoreH,W,shoreH);
     }
   },
   /* New River Gorge: single steel deck-arch spanning a canyon */
   bridge:{
     build(){ const x0=W*0.06,x1=W*0.94,cx=(x0+x1)/2,half=(x1-x0)/2; return {x0,x1,cx,half}; },
     draw(reflect,d){
-      const steel=reflect?'#141a30':'#2a3252', rim=horizonY*0.82, deckY=horizonY*0.60;
+      const steel=reflect?'#141a30':'#2a3252', rim=horizonY*0.965, deckY=horizonY*0.745;
       bgx.fillStyle=reflect?'#101830':'#18203a';                     // canyon walls (brighter, lower)
       bgx.beginPath(); bgx.moveTo(0,horizonY); bgx.lineTo(0,rim*0.88);
         bgx.quadraticCurveTo(d.x0*0.6,rim*0.8,d.x0,rim); bgx.lineTo(d.x0,horizonY); bgx.closePath(); bgx.fill();
@@ -588,39 +590,132 @@ const SCENES={
       if(!reflect){ bgx.fillStyle='#ffd9a0'; for(let x=W*0.1;x<W*0.9;x+=W*0.08){ bgx.globalAlpha=0.7; bgx.fillRect(x,deckY-horizonY*0.02,1.6,horizonY*0.014);} bgx.globalAlpha=1; }
     }
   },
-  /* US Capitol: wings, central portico, tall ribbed dome + statue */
+  /* US Capitol: wings, central portico, dome — plus a quieter skyline around it so the dome
+     isn't standing alone: an obelisk nodding to the Washington Monument, a small rotunda nodding
+     to the Jefferson/Smithsonian buildings, and low flanking government buildings further out. */
   capitol:{
+    /* A run of buildings climbing toward the center: height eases upward with random per-building
+       variation layered on top, so it reads as "steadily ascending" rather than a straight ramp.
+       Left and right runs are generated independently (different segment widths AND randomness),
+       which is what actually breaks the symmetry — not a mirrored copy with noise added after.
+       maxH is the central block's OWN height above the horizon — every segment is hard-capped
+       well below it, so no part of the terrace can ever reach (let alone top) the rotunda. */
+    buildWingRun(xStart,xEnd,growsRightward,maxH){
+      const segs=[]; let x=xStart; const span=Math.max(1,xEnd-xStart);
+      const topH=maxH*0.82, baseH=topH*0.34;                              // topH stays clearly under maxH
+      while(x<xEnd-4){
+        const w=Math.min(xEnd-x, 15+Math.random()*22), mid=x+w/2;
+        const frac=growsRightward?(mid-xStart)/span:(xEnd-mid)/span;      // 0 at outer end -> 1 near center
+        const eased=Math.pow(Math.max(0,Math.min(1,frac)),1.2);
+        // more jitter than the deterministic climb alone would give — some buildings ARE taller than
+        // their inward neighbor. The overall rise toward the center is still clear at a glance; it's
+        // just not a smooth ramp anymore.
+        const raw=baseH+(topH-baseH)*eased+(Math.random()-0.5)*baseH*0.95;
+        const h=Math.min(topH,Math.max(baseH*0.55,raw));                  // hard clamp: jitter can't punch through the cap
+        segs.push({x,w,top:horizonY-h,setback:Math.random()<0.28});
+        x+=w;
+      }
+      return segs;
+    },
+    /* Windows on the central block itself, arranged so the VOID between them reads as a stairway
+       narrowing into a doorway about halfway up the facade — wide at the base, narrowing in held
+       steps, down to a single-column gap (the door) at half-height, then a normal dense grid above
+       (the wall above the entrance). No extra shapes are drawn — it's pure window presence/absence. */
+    buildCentralWins(cx,cw,cTop){
+      const wins=[], top=cTop+6, bottom=horizonY-6, rowStep=11, colStep=7;
+      const nRows=Math.max(4,Math.floor((bottom-top)/rowStep));
+      const doorRow=Math.round(nRows*0.5), maxGapCols=6, holdRows=2;
+      for(let r=0;r<nRows;r++){
+        const rowFromBottom=nRows-1-r, y=bottom-rowFromBottom*rowStep;
+        let gapCols=0;
+        if(rowFromBottom<=doorRow){
+          const notch=Math.floor(rowFromBottom/holdRows), maxNotch=Math.max(1,Math.floor(doorRow/holdRows));
+          gapCols=Math.max(1, maxGapCols-Math.round((maxGapCols-1)*(notch/maxNotch)));  // widest at the base, narrows in held steps
+        }
+        const gapHalf=(gapCols*colStep)/2;
+        for(let x=cx-cw/2+4; x<=cx+cw/2-4; x+=colStep){
+          if(Math.abs(x-cx)<gapHalf) continue;          // the stair/door void — deliberately no window
+          if(Math.random()<0.8) wins.push({x,y,lit:Math.random()});
+        }
+      }
+      return wins;
+    },
     build(){
-      const cx=W/2, baseW=Math.min(W*0.66,940), wingH=horizonY*0.12, wins=[];
+      const cx=W/2, baseW=Math.min(W*0.54,820), wingH=horizonY*0.16, centralH=horizonY*0.15;
       const x0=cx-baseW/2, x1=cx+baseW/2, wingsTop=horizonY-wingH;
-      for(let r=0;r<2;r++) for(let wx=x0+10; wx<x1-6; wx+=15) if(Math.random()<0.7) wins.push({x:wx,y:wingsTop+7+r*15,lit:Math.random()});
-      return {cx,baseW,wingH,x0,x1,wingsTop,wins};
+      const cw=baseW*0.26, cTop=horizonY-centralH;
+      const leftSegs=this.buildWingRun(x0,cx-cw/2,true,centralH);
+      const rightSegs=this.buildWingRun(cx+cw/2,x1,false,centralH);
+      const wins=[];
+      for(const seg of [...leftSegs,...rightSegs]){
+        const rows=Math.max(1,Math.min(4,Math.floor((horizonY-seg.top-8)/11)));   // more rows on taller buildings
+        for(let r=0;r<rows;r++) for(let wx=seg.x+3; wx<seg.x+seg.w-2; wx+=7) if(Math.random()<0.85)
+          wins.push({x:wx,y:seg.top+6+r*11,lit:Math.random()});
+      }
+      const centralWins=this.buildCentralWins(cx,cw,cTop);
+      const obeliskX=W*0.13, obeliskH=horizonY*0.32, obeliskBaseW=Math.max(6,W*0.014);
+      const smallDomeX=W*0.87, smallDomeBaseW=Math.min(baseW*0.22,120), smallDomeH=horizonY*0.10;
+      const flankW=Math.min(baseW*0.16,90), flankH=horizonY*0.075;
+      const flankLX=W*0.045-flankW/2, flankRX=W*0.955-flankW/2, flankWins=[];
+      for(const fx of [flankLX,flankRX]) for(let wx=fx+3; wx<fx+flankW-2; wx+=7) if(Math.random()<0.8) flankWins.push({x:wx,y:horizonY-flankH+6,lit:Math.random()});
+      return {cx,baseW,wingH,centralH,cw,cTop,x0,x1,wingsTop,wins,centralWins,leftSegs,rightSegs,
+        obeliskX,obeliskH,obeliskBaseW,smallDomeX,smallDomeBaseW,smallDomeH,
+        flankW,flankH,flankLX,flankRX,flankWins};
     },
     draw(reflect,d){
       const near=reflect?'#0e1330':'#171e36'; bgx.fillStyle=near;
-      const {cx,baseW,x0,x1,wingsTop,wingH}=d;
-      bgx.fillRect(x0,wingsTop,baseW,wingH+2);                                   // wings
-      const cw=baseW*0.30, cTop=horizonY-horizonY*0.185; bgx.fillRect(cx-cw/2,cTop,cw,horizonY-cTop+2); // central block
-      bgx.beginPath(); bgx.moveTo(cx-cw/2,cTop); bgx.lineTo(cx,cTop-horizonY*0.032); bgx.lineTo(cx+cw/2,cTop); bgx.closePath(); bgx.fill(); // pediment
-      const drumW=cw*0.60, drumTop=cTop-horizonY*0.07; bgx.fillRect(cx-drumW/2,drumTop,drumW,cTop-drumTop); // drum
-      const domeR=drumW/2; bgx.beginPath(); bgx.ellipse(cx,drumTop,domeR,domeR*1.3,0,Math.PI,2*Math.PI); bgx.fill(); // dome
-      const lanY=drumTop-domeR*1.3; bgx.fillRect(cx-domeR*0.16,lanY,domeR*0.32,horizonY*0.02);              // lantern
-      bgx.fillRect(cx-1.5,lanY-horizonY*0.022,3,horizonY*0.022);                                            // Freedom statue
+      const {cx,baseW}=d;
+      for(const seg of [...d.leftSegs,...d.rightSegs]){                  // ascending terrace, not one flat slab
+        bgx.fillRect(seg.x,seg.top,seg.w,horizonY-seg.top+2);
+        if(seg.setback) bgx.fillRect(seg.x+seg.w*0.2,seg.top-4,seg.w*0.6,4);   // occasional roof ledge, echoes the city buildings
+      }
+      const {cw,cTop}=d; bgx.fillRect(cx-cw/2,cTop,cw,horizonY-cTop+2); // central block — shorter, narrower
+      bgx.beginPath(); bgx.moveTo(cx-cw/2,cTop); bgx.lineTo(cx,cTop-horizonY*0.028); bgx.lineTo(cx+cw/2,cTop); bgx.closePath(); bgx.fill(); // pediment
+      const drumW=cw*0.58, drumTop=cTop-horizonY*0.055; bgx.fillRect(cx-drumW/2,drumTop,drumW,cTop-drumTop); // drum
+      const domeR=drumW/2; bgx.beginPath(); bgx.ellipse(cx,drumTop,domeR,domeR*1.2,0,Math.PI,2*Math.PI); bgx.fill(); // dome — flatter than before
+      const lanY=drumTop-domeR*1.2; bgx.fillRect(cx-domeR*0.16,lanY,domeR*0.32,horizonY*0.016);              // lantern
+      bgx.fillRect(cx-1.3,lanY-horizonY*0.018,2.6,horizonY*0.018);                                           // Freedom statue
+      const {obeliskX,obeliskH,obeliskBaseW,smallDomeX,smallDomeBaseW,smallDomeH,flankW,flankH,flankLX,flankRX,flankWins}=d;
+      const obTop=horizonY-obeliskH, obTip=obTop-obeliskBaseW*0.9;                // tapering shaft + pyramidion
+      bgx.beginPath(); bgx.moveTo(obeliskX-obeliskBaseW/2,horizonY); bgx.lineTo(obeliskX-obeliskBaseW*0.32,obTop);
+        bgx.lineTo(obeliskX,obTip); bgx.lineTo(obeliskX+obeliskBaseW*0.32,obTop); bgx.lineTo(obeliskX+obeliskBaseW/2,horizonY);
+        bgx.closePath(); bgx.fill();
+      const sdTop=horizonY-smallDomeH; bgx.fillRect(smallDomeX-smallDomeBaseW/2,sdTop,smallDomeBaseW,smallDomeH+2);   // small rotunda
+      const sdDomeR=smallDomeBaseW*0.34; bgx.beginPath(); bgx.ellipse(smallDomeX,sdTop,sdDomeR,sdDomeR*0.9,0,Math.PI,2*Math.PI); bgx.fill();
+      bgx.fillRect(flankLX,horizonY-flankH,flankW,flankH+2);                      // low flanking buildings, further out
+      bgx.fillRect(flankRX,horizonY-flankH,flankW,flankH+2);
       if(!reflect){
         bgx.fillStyle='#ffe1a8'; for(const w of d.wins){ bgx.globalAlpha=0.35+w.lit*0.5; bgx.fillRect(w.x,w.y,2.2,4);} bgx.globalAlpha=1;
+        bgx.fillStyle='#ffe1a8'; for(const w of d.centralWins){ bgx.globalAlpha=0.35+w.lit*0.5; bgx.fillRect(w.x,w.y,2.2,4);} bgx.globalAlpha=1;
         bgx.fillStyle='rgba(0,0,0,0.45)'; for(let wx=cx-drumW/2+3; wx<cx+drumW/2-2; wx+=6) bgx.fillRect(wx,drumTop+2,1.4,cTop-drumTop-2); // colonnade
+        bgx.fillStyle='#ffe1a8'; for(const w of flankWins){ bgx.globalAlpha=0.35+w.lit*0.5; bgx.fillRect(w.x,w.y,2,3.4);} bgx.globalAlpha=1;
       }
+      const shoreH=Math.max(2,horizonY*0.010);                                   // waterfront embankment
+      bgx.fillStyle=reflect?'#0b0e24':'#333c58'; bgx.fillRect(0,horizonY-shoreH,W,shoreH);
     }
   },
-  /* Mt. Rainier: one dominant snow-capped peak + foreground ridge */
+  /* A range, not a single peak — overlapping silhouettes so the shapes blend the way a real
+     skyline does. Overall scale down ~25% from the old single-mountain version. Shapes nod to
+     recognizable peaks without literally labeling them: a broad snow dome (Rainier-esque), a
+     sharp spire (Matterhorn-esque), and jagged smaller summits (Teton-esque) filling it out. */
   mountain:{
     build(){
-      const px=W*0.48, peakY=horizonY-horizonY*0.52, n=90, pts=[];
-      for(let i=0;i<=n;i++){ const x=(i/n)*W, u=Math.abs((x-px)/(W*0.5));
-        let y=peakY+(horizonY-peakY)*Math.pow(u,1.5); y+=(Math.sin(i*0.7)+Math.sin(i*1.9))*horizonY*0.006; pts.push({x,y}); }
+      const peaks=[
+        {cx:W*0.14,h:horizonY*0.300,w:W*0.20,p:1.9},
+        {cx:W*0.33,h:horizonY*0.390,w:W*0.27,p:1.30},   // tallest — broad snow dome. 0.52*0.75=0.39: exactly 25% below the old single peak
+        {cx:W*0.50,h:horizonY*0.220,w:W*0.14,p:2.6},    // sharp spire
+        {cx:W*0.68,h:horizonY*0.330,w:W*0.24,p:1.55},
+        {cx:W*0.85,h:horizonY*0.190,w:W*0.17,p:2.1},
+      ];
+      const n=140,pts=[];
+      for(let i=0;i<=n;i++){ const x=(i/n)*W; let y=horizonY;
+        for(const pk of peaks){ const u=Math.min(1,Math.abs(x-pk.cx)/pk.w);
+          y=Math.min(y,(horizonY-pk.h)+pk.h*Math.pow(u,pk.p)); }               // upper envelope = a range, not separate cutouts
+        y+=(Math.sin(i*0.9)+Math.sin(i*2.3))*horizonY*0.006; pts.push({x,y}); }
       const ridge=[]; for(let i=0;i<=n;i++){ const x=(i/n)*W, u=Math.abs((x-W*0.62)/(W*0.55));
-        ridge.push({x,y:horizonY-horizonY*0.15+Math.pow(u,1.6)*horizonY*0.1+Math.sin(i*1.3)*horizonY*0.008}); }
-      return {pts,ridge,snowY:peakY+horizonY*0.13};
+        ridge.push({x,y:horizonY-horizonY*0.1125+Math.pow(u,1.6)*horizonY*0.075+Math.sin(i*1.3)*horizonY*0.006}); }
+      const tallest=Math.max(...peaks.map(p=>p.h));
+      return {pts,ridge,snowY:(horizonY-tallest)+tallest*0.28};
     },
     draw(reflect,d){
       bgx.fillStyle=reflect?'#0f1428':'#131a2e';                                 // main massif (brighter)
@@ -661,6 +756,8 @@ const SCENES={
         for(const s of d.b) for(const w of s.wins){ bgx.globalAlpha=0.4+w.lit*0.5; bgx.fillStyle=w.lit>0.6?'#ffd27a':'#e8a94a'; bgx.fillRect(w.x,w.y,2.4,4);} bgx.globalAlpha=1;
         bgx.fillStyle='#ffd27a'; bgx.globalAlpha=0.85; bgx.beginPath(); bgx.arc(cx,twTop+horizonY*0.03,3,0,6.283); bgx.fill(); bgx.globalAlpha=1; // clock face
       }
+      const shoreH=Math.max(2,horizonY*0.010);                                // waterfront embankment
+      bgx.fillStyle=reflect?'#0b0e24':'#333c58'; bgx.fillRect(0,horizonY-shoreH,W,shoreH);
     }
   }
 };
