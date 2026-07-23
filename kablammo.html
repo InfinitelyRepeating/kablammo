@@ -36,6 +36,8 @@
   #wordmark.hide{opacity:0;}
   #hint{color:rgba(255,214,138,.5);font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;transition:opacity .8s ease;}
   #hint.hide{opacity:0;}
+  #buildTag{color:rgba(255,214,138,.28);font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;transition:opacity .8s ease;}
+  #buildTag.hide{opacity:0;}
 
   #console{position:fixed;left:0;right:0;bottom:0;z-index:4;
     background:linear-gradient(180deg,var(--panel-hi),var(--panel));border-top:1px solid var(--edge);
@@ -306,6 +308,7 @@
   <div id="intro">
     <div id="wordmark">KABLAMMO</div>
     <div id="hint">Tap high for aerial shells &nbsp;·&nbsp; low for ground effects</div>
+    <div id="buildTag"></div>
   </div>
 
   <div id="dock">
@@ -1408,8 +1411,11 @@ midiFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
 };
 
 const hintEl=document.getElementById('hint'); let hintHidden=false;
+const BUILD_NUM=15;   // bump this with each new build — shown as a small tag under the opening banner
+document.getElementById('buildTag').textContent='Build '+BUILD_NUM;
 function hideHint(){ if(!hintHidden){ hintHidden=true; hintEl.classList.add('hide');
-  const wm=document.getElementById('wordmark'); if(wm) wm.classList.add('hide'); } }
+  const wm=document.getElementById('wordmark'); if(wm) wm.classList.add('hide');
+  const bt=document.getElementById('buildTag'); if(bt) bt.classList.add('hide'); } }
 fx.addEventListener('pointerdown',e=>{ if(e.button===2)return; if(e.target.closest('#dock'))return; const y=e.clientY;
   if(y<horizonY-30){ launch(e.clientX,Math.max(Math.min(y,horizonY-60),H*0.08)); } else { groundShot(curGround,e.clientX); } });
 
