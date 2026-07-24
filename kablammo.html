@@ -653,13 +653,22 @@ const SCENES={
           wins.push({x:wx,y:seg.top+6+r*11,lit:Math.random()});
       }
       const centralWins=this.buildCentralWins(cx,cw,cTop);
-      const obeliskX=W*0.13, obeliskH=horizonY*0.32, obeliskBaseW=Math.max(6,W*0.014);
+      /* Statue in a plaza — replaces an earlier obelisk that scaled its height off horizonY but
+         its width off W. In portrait, horizonY stays comparatively large while W shrinks, so the
+         two dimensions drifted apart and it read as absurdly tall and skinny. Every dimension here
+         derives from horizonY alone (the scene's own vertical scale); only position and a width
+         SAFETY CAP reference W, so proportions hold on any aspect ratio. */
+      const plazaX=W*0.13;
+      const plazaW=Math.min(horizonY*0.30, 2*Math.min(plazaX,W-plazaX)*0.92);   // never spill past the nearer edge
+      const plazaH=horizonY*0.020;
+      const pedestalW=plazaW*0.22, pedestalH=horizonY*0.055;
+      const statueW=pedestalW*0.80, statueH=horizonY*0.075;
       const smallDomeX=W*0.87, smallDomeBaseW=Math.min(baseW*0.22,120), smallDomeH=horizonY*0.10;
       const flankW=Math.min(baseW*0.16,90), flankH=horizonY*0.075;
       const flankLX=W*0.045-flankW/2, flankRX=W*0.955-flankW/2, flankWins=[];
       for(const fx of [flankLX,flankRX]) for(let wx=fx+3; wx<fx+flankW-2; wx+=7) if(Math.random()<0.8) flankWins.push({x:wx,y:horizonY-flankH+6,lit:Math.random()});
       return {cx,baseW,wingH,centralH,cw,cTop,x0,x1,wingsTop,wins,centralWins,leftSegs,rightSegs,
-        obeliskX,obeliskH,obeliskBaseW,smallDomeX,smallDomeBaseW,smallDomeH,
+        plazaX,plazaW,plazaH,pedestalW,pedestalH,statueW,statueH,smallDomeX,smallDomeBaseW,smallDomeH,
         flankW,flankH,flankLX,flankRX,flankWins};
     },
     draw(reflect,d){
@@ -675,11 +684,21 @@ const SCENES={
       const domeR=drumW/2; bgx.beginPath(); bgx.ellipse(cx,drumTop,domeR,domeR*1.2,0,Math.PI,2*Math.PI); bgx.fill(); // dome — flatter than before
       const lanY=drumTop-domeR*1.2; bgx.fillRect(cx-domeR*0.16,lanY,domeR*0.32,horizonY*0.016);              // lantern
       bgx.fillRect(cx-1.3,lanY-horizonY*0.018,2.6,horizonY*0.018);                                           // Freedom statue
-      const {obeliskX,obeliskH,obeliskBaseW,smallDomeX,smallDomeBaseW,smallDomeH,flankW,flankH,flankLX,flankRX,flankWins}=d;
-      const obTop=horizonY-obeliskH, obTip=obTop-obeliskBaseW*0.9;                // tapering shaft + pyramidion
-      bgx.beginPath(); bgx.moveTo(obeliskX-obeliskBaseW/2,horizonY); bgx.lineTo(obeliskX-obeliskBaseW*0.32,obTop);
-        bgx.lineTo(obeliskX,obTip); bgx.lineTo(obeliskX+obeliskBaseW*0.32,obTop); bgx.lineTo(obeliskX+obeliskBaseW/2,horizonY);
-        bgx.closePath(); bgx.fill();
+      const {plazaX,plazaW,plazaH,pedestalW,pedestalH,statueW,statueH,smallDomeX,smallDomeBaseW,smallDomeH,flankW,flankH,flankLX,flankRX,flankWins}=d;
+      bgx.fillRect(plazaX-plazaW/2,horizonY-plazaH,plazaW,plazaH+2);                              // low plaza platform
+      const pedTop=horizonY-plazaH-pedestalH;
+      bgx.fillRect(plazaX-pedestalW/2,pedTop,pedestalW,pedestalH);                                // pedestal
+      const bodyTop=pedTop-statueH, headR=statueW*0.32;
+      bgx.beginPath(); bgx.moveTo(plazaX-statueW*0.42,pedTop); bgx.lineTo(plazaX-statueW*0.30,bodyTop+headR*0.6);
+        bgx.lineTo(plazaX+statueW*0.30,bodyTop+headR*0.6); bgx.lineTo(plazaX+statueW*0.42,pedTop); bgx.closePath(); bgx.fill(); // figure's body/robe
+      bgx.beginPath(); bgx.arc(plazaX,bodyTop+headR*0.55,headR*0.55,0,6.283); bgx.fill();          // head
+      bgx.beginPath(); bgx.moveTo(plazaX+statueW*0.24,bodyTop+headR*0.9); bgx.lineTo(plazaX+statueW*0.62,bodyTop-headR*0.5);
+        bgx.lineTo(plazaX+statueW*0.50,bodyTop-headR*0.7); bgx.lineTo(plazaX+statueW*0.16,bodyTop+headR*0.5); bgx.closePath(); bgx.fill(); // arm raised in a gesture
+      for(const lx of [plazaX-plazaW*0.38,plazaX+plazaW*0.38]){                                    // small flanking lamp posts
+        bgx.fillRect(lx-1,horizonY-plazaH-horizonY*0.045,2,horizonY*0.045);
+        if(!reflect){ bgx.fillStyle='#ffd27a'; bgx.globalAlpha=0.8; bgx.beginPath();
+          bgx.arc(lx,horizonY-plazaH-horizonY*0.045,2.2,0,6.283); bgx.fill(); bgx.globalAlpha=1; bgx.fillStyle=near; }
+      }
       const sdTop=horizonY-smallDomeH; bgx.fillRect(smallDomeX-smallDomeBaseW/2,sdTop,smallDomeBaseW,smallDomeH+2);   // small rotunda
       const sdDomeR=smallDomeBaseW*0.34; bgx.beginPath(); bgx.ellipse(smallDomeX,sdTop,sdDomeR,sdDomeR*0.9,0,Math.PI,2*Math.PI); bgx.fill();
       bgx.fillRect(flankLX,horizonY-flankH,flankW,flankH+2);                      // low flanking buildings, further out
@@ -1001,7 +1020,8 @@ function groundShot(type,x,o){
   else if(type==='wheel'){ made={type:'wheel',x,y:horizonY-Math.min(70,H*0.08),life,ang:Math.random()*6.28,pal,rtp};
     emitters.push(made); sndHiss(Math.min(3,durSec)); }
   else if(type==='serpent'){ made={x,y,tx:x,ty:horizonY-(H*0.18+Math.random()*H*0.14),
-    vy:-(3.2+Math.random()*0.6)*R,vx:0,shell:'mini',pal,serpent:true,phase:Math.random()*6.28}; rockets.push(made); sndFizz(); }
+    vy:-(3.2+Math.random()*0.6),vx:0,shell:'mini',pal,serpent:true,phase:Math.random()*6.28,
+    params:{radius:R,trails:rtp.trails,persist:PE}}; rockets.push(made); sndFizz(); }   // RTP applies to the burst, not the climb
   else if(type==='salute'){ for(let i=0;i<26;i++){ const a=-Math.PI/2+(Math.random()-0.5)*Math.PI*1.15,s=(Math.random()*4+3)*R;
       if(parts.length<MAX_PARTS) parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:(26+Math.random()*10)*PE,max:36*PE,
         size:2.4,type:'glow',c:COLORS.silver,drag:0.92,g:0.06}); } flash(x,y,64); sndSalute(); }
@@ -1063,8 +1083,9 @@ function frame(now){
   const wind=Math.sin(now*0.0003)*0.008;
   for(let i=rockets.length-1;i>=0;i--){ const r=rockets[i];
     if(r.serpent){ r.phase+=0.5*dt; r.x+=Math.sin(r.phase)*2.4*dt;
+      const tpe=(r.params&&r.params.persist)||1;                              // persist stretches the tail's life
       if(parts.length<MAX_PARTS) parts.push({x:r.x+(Math.random()-0.5)*3,y:r.y,vx:(Math.random()-0.5)*0.6,vy:0.3,
-        life:16+Math.random()*8,max:24,size:1.4,type:'ember',c:COLORS.gold,drag:0.9,g:0.03}); }
+        life:(16+Math.random()*8)*tpe,max:24*tpe,size:1.4,type:'ember',c:COLORS.gold,drag:0.9,g:0.03}); }
     r.x+=r.vx*dt; r.y+=r.vy*dt; r.vy+=GRAV*dt;
     const hc=(r.pal&&r.pal[0])||COLORS.gold;
     ctx.fillStyle=`rgba(${hc[0]},${hc[1]},${hc[2]},0.9)`; dot(r.x,r.y,2);
@@ -1508,13 +1529,14 @@ midiFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
 };
 
 const hintEl=document.getElementById('hint'); let hintHidden=false;
-const BUILD_NUM=15;   // bump this with each new build — shown as a small tag under the opening banner
+const BUILD_NUM=18;   // bump this with each new build — shown as a small tag under the opening banner
 document.getElementById('buildTag').textContent='Build '+BUILD_NUM;
 function hideHint(){ if(!hintHidden){ hintHidden=true; hintEl.classList.add('hide');
   const wm=document.getElementById('wordmark'); if(wm) wm.classList.add('hide');
   const bt=document.getElementById('buildTag'); if(bt) bt.classList.add('hide'); } }
 fx.addEventListener('pointerdown',e=>{ if(e.button===2)return; if(e.target.closest('#dock'))return; const y=e.clientY;
-  if(y<horizonY-30){ launch(e.clientX,Math.max(Math.min(y,horizonY-60),H*0.08)); } else { groundShot(curGround,e.clientX); } });
+  if(y<horizonY-30){ launch(e.clientX,Math.max(Math.min(y,horizonY-60),H*0.08)); }
+  else { groundShot(curGround,e.clientX,{rtp:{radius:parseFloat(sR.value),trails:parseFloat(sT.value),persist:parseFloat(sP.value)}}); } });
 
 /* ---------------- Shell Builder ---------------- */
 const DEFAULT_REGION=[255,190,74];
