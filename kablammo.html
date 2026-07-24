@@ -87,6 +87,7 @@
      but visually gone. Do NOT swap this for [hidden] or display:none. */
   .vfile{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;}
   .filebtn.on{color:#7dffc4;border-color:#4fd39a;box-shadow:0 0 12px rgba(60,220,150,.35);}
+  #corners{margin-left:auto;}                            /* sit at the far right, after the RTP sliders */
   #openBuilder.on{color:#a9ccff;border-color:#5aa0ff;box-shadow:0 0 12px rgba(70,140,255,.35);}
   #trackSel.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 10px rgba(255,150,60,.35);}
   #trackInfoBtn{padding:4px 7px;line-height:1;}
@@ -368,11 +369,14 @@
       <div class="tp on" data-tab="ground">
         <div class="group">
           <span class="lbl">Ground</span>
-          <select class="sel" id="groundSel">
+          <select class="sel narrow" id="groundSel">
             <option value="fountain">⛲ Fountain</option><option value="candle">🕯️ Candle</option>
             <option value="wheel">🎡 Wheel</option><option value="serpent">🐍 Serpent</option>
             <option value="salute">💥 Salute</option>
           </select>
+          <label class="sld" title="Burst radius"><input id="gRadius" type="range" min="0.5" max="1.8" step="0.05"><span>Radius</span></label>
+          <label class="sld" title="Trail length"><input id="gTrails" type="range" min="0" max="1" step="0.05"><span>Trails</span></label>
+          <label class="sld" title="How long sparks live"><input id="gPersist" type="range" min="0.6" max="2" step="0.05"><span>Persist</span></label>
           <button class="btn" id="corners">Corners</button>
         </div>
       </div>
@@ -450,6 +454,14 @@ const shellParams={
   palm:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
   ring:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
   custom:{radius:1.0,trails:1.0,persist:1.0}    // multipliers over each builder layer's own RTP
+};
+/* ground effects keep their own RTP, remembered per effect for the session (same idea as shellParams) */
+const groundParams={
+  fountain:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
+  candle:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
+  wheel:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
+  serpent:{radius:DEF_R,trails:DEF_T,persist:DEF_P},
+  salute:{radius:DEF_R,trails:DEF_T,persist:DEF_P}
 };
 
 /* ---- COLOR AS PALETTE (future-proofing for multi-color shells) ----
@@ -1344,9 +1356,16 @@ syncSliders();
 
 const shellSel=document.getElementById('shellSel'), sceneSel=document.getElementById('sceneSel');
 const groundSel=document.getElementById('groundSel'), customOpt=document.getElementById('customOpt');
+const gR=document.getElementById('gRadius'), gT=document.getElementById('gTrails'), gP=document.getElementById('gPersist');
+function syncGroundSliders(){ const p=groundParams[curGround];
+  gR.value=p.radius; gT.value=p.trails; gP.value=p.persist; }
+gR.oninput=()=>groundParams[curGround].radius=parseFloat(gR.value);
+gT.oninput=()=>groundParams[curGround].trails=parseFloat(gT.value);
+gP.oninput=()=>groundParams[curGround].persist=parseFloat(gP.value);
+syncGroundSliders();
 shellSel.onchange=()=>{ curShell=shellSel.value;                    // picking a preset overwrites the custom shell
   document.getElementById('openBuilder').classList.toggle('on',curShell==='custom'); syncSliders(); };
-groundSel.onchange=()=>{ curGround=groundSel.value; };
+groundSel.onchange=()=>{ curGround=groundSel.value; syncGroundSliders(); };
 sceneSel.onchange=()=>{ curScene=sceneSel.value; buildScene(); };
 
 const cornersBtn=document.getElementById('corners');
@@ -1529,14 +1548,14 @@ midiFile.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
 };
 
 const hintEl=document.getElementById('hint'); let hintHidden=false;
-const BUILD_NUM=18;   // bump this with each new build — shown as a small tag under the opening banner
+const BUILD_NUM=19;   // bump this with each new build — shown as a small tag under the opening banner
 document.getElementById('buildTag').textContent='Build '+BUILD_NUM;
 function hideHint(){ if(!hintHidden){ hintHidden=true; hintEl.classList.add('hide');
   const wm=document.getElementById('wordmark'); if(wm) wm.classList.add('hide');
   const bt=document.getElementById('buildTag'); if(bt) bt.classList.add('hide'); } }
 fx.addEventListener('pointerdown',e=>{ if(e.button===2)return; if(e.target.closest('#dock'))return; const y=e.clientY;
   if(y<horizonY-30){ launch(e.clientX,Math.max(Math.min(y,horizonY-60),H*0.08)); }
-  else { groundShot(curGround,e.clientX,{rtp:{radius:parseFloat(sR.value),trails:parseFloat(sT.value),persist:parseFloat(sP.value)}}); } });
+  else { groundShot(curGround,e.clientX,{rtp:{...groundParams[curGround]}}); } });
 
 /* ---------------- Shell Builder ---------------- */
 const DEFAULT_REGION=[255,190,74];
